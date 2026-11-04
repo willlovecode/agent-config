@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings", "checked"],
+  "properties": {
+    "checked": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 200 } },
+    "findings": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "target", "summary", "recommendation", "details", "evidence"],
+        "properties": {
+          "kind": { "enum": ["update", "replace", "add", "remove", "risk", "unmanaged"] },
+          "target": { "type": "string", "maxLength": 80 },
+          "new_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "summary": { "type": "string", "maxLength": 400 },
+          "recommendation": { "enum": ["apply", "consider", "skip"] },
+          "details": { "type": "string", "maxLength": 1500 },
+          "evidence": { "type": "array", "maxItems": 8, "items": { "type": "string", "pattern": "^https://", "maxLength": 300 } }
+        }
+      }
+    }
+  }
+}

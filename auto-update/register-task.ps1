@@ -3,8 +3,11 @@
 $ErrorActionPreference = "Stop"
 $script = Join-Path $PSScriptRoot "update-config.ps1"
 $user   = "$env:USERDOMAIN\$env:USERNAME"
-$action = New-ScheduledTaskAction -Execute "powershell.exe" `
-  -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+# Two actions, run in order: the benchmark check, then the weekly skills check.
+$action = foreach ($s in $script, (Join-Path $PSScriptRoot "skills-check.ps1")) {
+  New-ScheduledTaskAction -Execute "powershell.exe" `
+    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$s`""
+}
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
 $trigger.Delay = "PT2M"
 $settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable `

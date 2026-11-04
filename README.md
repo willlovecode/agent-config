@@ -10,9 +10,21 @@ Single source of truth for how coding agents behave on this PC.
 | `claude/model-settings.json` | merged into `modelSettings` of `%USERPROFILE%\.claude\settings.json` |
 | `codex/default.toml` | `model` and `model_reasoning_effort` patched into `%USERPROFILE%\.codex\config.toml` |
 | `codex/*.config.toml` | `%USERPROFILE%\.codex\` (profiles `deep`, `quick`) |
-| `skills/` | `%USERPROFILE%\.agents\skills\` (Codex), junction-linked into `.claude\skills` |
+| `skills/baseline.json` | skills pinned to a commit in `%USERPROFILE%\.agents\skills\` (Codex), junction-linked into `.claude\skills`; plus the Claude Code and Codex skill plugins |
 
 `install.ps1` only adds and updates; it never removes hooks, plugins, skills or agents.
+`skills/install-skills.ps1` (called by it) replaces a skill folder only if it
+carries its own `.agent-config-pin` file. `explicit_only` skills get
+`disable-model-invocation: true` (Claude Code) and
+`allow_implicit_invocation: false` (Codex). The pre-baseline skills are in
+`Code\_archive\skills-2026-11-04` (`MANIFEST.txt` lists every move).
+
+## Skills
+
+Few, audited, pinned. To add one, read every file in it first, then add an
+entry to `skills/baseline.json` with the commit you read and run `install.ps1`.
+Project-specific skills (vbgym's UI skills, Sol's Apple-design skills) stay in
+their projects.
 
 ## Auto-update
 
@@ -28,8 +40,19 @@ registered by `auto-update/register-task.ps1`: 2 min delay, network only).
    validated reading to the allowlisted files. The script rolls back anything
    else, runs `install.ps1`, commits locally (never pushes) and toasts.
 
-Logs: `%LOCALAPPDATA%\agent-config\logs` (last 30 runs). `-Force` runs the
-update phase even when the check reports no change.
+3. Skills, at most weekly (`auto-update/skills-check.ps1`, the task's second
+   action): the script lists upstream commits since each pin and local skills
+   the baseline does not manage. A headless run on the `implement` agent's
+   model with only WebFetch/WebSearch judges updates, audit risks and better
+   alternatives. It applies nothing. Findings open as a report in the browser
+   with a toast; approve in a Claude Code session in this repo ("Apply skill
+   findings 1, 3 from <json>"), which edits `skills/baseline.json`, runs
+   `install.ps1` and commits locally.
+
+Every report opens in the default browser by itself (toast clicks cannot open
+links from a script). Logs and reports: `%LOCALAPPDATA%\agent-config\logs` (last
+30 runs). `-Force` runs the update phase even when the check reports no change,
+or the skills check before its week is up.
 
 Edit here, then run:
 
