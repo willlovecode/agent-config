@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skills baseline proposal</title>
+<style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1d1d1f;--mute:#6e6e73;--card:#fff;--line:#e5e5ea;--keep:#1f7a3a;--drop:#b3261e;--ask:#8a5a00;--add:#0b57d0}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f5f5f7;--mute:#a1a1a6;--card:#2c2c2e;--line:#3a3a3c;--keep:#5fd17a;--drop:#ff8a80;--ask:#f2c14e;--add:#8ab4f8}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif}
+main{max-width:880px;margin:32px auto;padding:0 16px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:32px 0 8px}
+.meta{color:var(--mute);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-top:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;border-top:0}
+td:first-child{font-weight:700;white-space:nowrap}
+.tag{font-weight:700;font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.keep{color:var(--keep)}.drop{color:var(--drop)}.ask{color:var(--ask)}.add{color:var(--add)}
+code{font:13px Consolas,monospace}
+.wrap{overflow-x:auto}
+ul{margin:6px 0;padding-left:22px}
+</style>
+<main>
+<h1>Skills baseline proposal</h1>
+<p class="meta">2026-11-04 &middot; for approval &middot; reply in chat with the numbers, e.g. "1-4 yes, 7 no, 9 keep only literature-review"</p>
+
+<div class="card">
+<b>Finding.</b> Claude Code currently lists about <b>93 skills</b>, and roughly half are duplicates or retired upstream. Your
+2026-10-07 research (agent-config <code>docs/research.md</code>) and the Vega community-skills study both say: few, audited,
+pinned skills, because the listing has a budget (about 1% of context) and silently drops or truncates entries when it overflows.
+Applying the "yes" items below brings Claude Code to about <b>50</b> listings with no lost capability.
+Nothing is deleted: removals move folders to <code>Code\_archive\skills-2026-11-04</code> or remove a junction only.
+</div>
+
+<h2>Where skills come from today</h2>
+<div class="card wrap"><table>
+<tr><th>Source</th><th>What</th><th>Seen by</th></tr>
+<tr><td>Plugin <code>mattpocock-skills</code></td><td>27 current Matt Pocock skills, auto-updating</td><td>Claude Code; Codex has the same plugin</td></tr>
+<tr><td><code>Code\.agents\skills</code></td><td>38 <code>npx skills</code> copies of Matt Pocock skills from 2026-10-11, junctioned into <code>~/.claude/skills</code></td><td>Claude Code (global), Codex when working in <code>C:\Users\walbe\Code</code></td></tr>
+<tr><td><code>~/.agents/skills</code></td><td>13 skills from 9 repos (lock file <code>~/.agents/.skill-lock.json</code>)</td><td>Codex; Claude Code via junctions</td></tr>
+<tr><td>Plugins <code>last30days</code>, <code>frontend-design</code></td><td>official and pinned plugins</td><td>Claude Code</td></tr>
+<tr><td>claude.ai account</td><td>Anthropic skills (docx, pdf, pptx, xlsx, skill-creator and others)</td><td>Claude Code; not local, nothing to manage</td></tr>
+</table></div>
+
+<h2>Proposals</h2>
+<div class="card wrap"><table>
+<tr><th>#</th><th>Action</th><th>What and why</th></tr>
+<tr><td>1</td><td class="tag drop">REMOVE 38 junctions</td><td>Unlink the 38 <code>Code\.agents\skills</code> entries from <code>~/.claude/skills</code>. The plugin already gives you the current 27, and Matt Pocock's README says installing both "gives you every skill twice".</td></tr>
+<tr><td>2</td><td class="tag drop">ARCHIVE folder</td><td>Move <code>Code\.agents\skills</code> and <code>Code\skills-lock.json</code> to the archive. 11 of the 38 are retired upstream and no longer updated: chief-of-staff, claude-handoff, git-guardrails-claude-code, loop-me, migrate-to-shoehorn, scaffold-exercises, setup-pre-commit, setup-ts-deep-modules, writing-beats, writing-fragments, writing-shape. Codex gets the current set from its own Matt Pocock plugin.</td></tr>
+<tr><td>3</td><td class="tag drop">REMOVE 4 copies</td><td><code>~/.agents/skills</code> code-review, domain-modeling, grill-me, grill-with-docs are older copies of plugin skills, in both tools.</td></tr>
+<tr><td>4</td><td class="tag drop">UNLINK last30days for Claude</td><td>Claude Code already gets it from the pinned plugin. Keep the <code>~/.agents</code> copy for Codex. (I created this junction today via install.ps1. That was a regression on my side, fixed by 7.)</td></tr>
+<tr><td>5</td><td class="tag ask">DECIDE brainstorming</td><td>From obra/superpowers (312k stars, active). Its description opens with "You MUST use this before any creative work", the emphatic wording both vendors say causes over-triggering, and it overlaps <code>grilling</code> / <code>grill-me</code>. Options: remove; keep but explicit-only; keep as is. <b>Recommendation: explicit-only.</b></td></tr>
+<tr><td>6</td><td class="tag drop">REMOVE multi-agent-brainstorming</td><td>From sickn33/agentic-awesome-skills, an aggregator of copied skills (the source type your research warns about). It overlaps 5 and the grill skills, and spawns several agents, which hit your session limit before.</td></tr>
+<tr><td>7</td><td class="tag add">BASELINE FILE</td><td>Add <code>skills/baseline.json</code> to agent-config: every global skill with source, pinned commit or folder hash, which tool sees it, and why. install.ps1 links into Claude Code only what the baseline lists for Claude, so nothing duplicates again.</td></tr>
+<tr><td>8</td><td class="tag keep">KEEP</td><td>find-skills (vercel-labs, #1 on skills.sh, 4.2M installs; used by the check below), powershell-windows (one Markdown file, no scripts), plugins mattpocock-skills, frontend-design, last30days, local skill-creator.</td></tr>
+<tr><td>9</td><td class="tag ask">DECIDE science skills</td><td>literature-review, paper-lookup (K-Dense, 56k stars) and pubmed-database (DeepMind), 21 bundled scripts in all. Useful for research tasks; pubmed-database is niche. Options: keep all; keep literature-review + paper-lookup; remove all.</td></tr>
+<tr><td>10</td><td class="tag ask">AUDIT maintaining-windows-health</td><td>From CodeAlive-AI (168 stars, below find-skills' own trust bar) with 7 bundled scripts that create scheduled tasks and alerts. I would read every file before you decide keep or remove.</td></tr>
+<tr><td>11</td><td class="tag keep">PROJECT-LEVEL STAYS</td><td>vbgym's 7 UI skills (ui-ux-pro-max, accessibility and others) and the Apple-design skills for Sol stay in their projects, not in the global baseline: they are task-specific and would crowd every other session.</td></tr>
+<tr><td>12</td><td class="tag add">NO NEW SKILLS NOW</td><td>The scan found no global gap. Superpowers as a whole pack duplicates plan mode and the Matt Pocock set (research verdict: cherry-pick). Anthropic's anthropics/skills (last commit 2026-10-28) are already reachable through your account. openai/skills is deprecated in favour of plugins.</td></tr>
+</table></div>
+
+<h2>Proposed auto-update for skills</h2>
+<div class="card">
+<ul>
+<li><b>When:</b> in the same logon task, at most once a week (skills move slower than benchmarks, and the check costs more).</li>
+<li><b>Script, no model:</b> for each baseline entry, compare the pinned commit/hash with upstream (<code>gh api</code>, <code>npx skills check</code>), plugin versions, and skills.sh audit status.</li>
+<li><b>Model, web tools only (no edit, no shell):</b> Sonnet at high. This is judgement, not number-reading, and the table puts Sonnet high on "implementation from a clear brief". It reads what changed upstream and looks on skills.sh, find-skills, GitHub and community sources for better alternatives or new risks. It returns structured findings (update / replace / add / remove / risk), each with evidence links.</li>
+<li><b>Nothing is applied automatically.</b> If there are findings: a sticky toast "skill findings: N proposals", with <i>Open report</i> (this format) and <i>Review with Claude</i>. The second opens Claude Code in agent-config with the report loaded; you say yes, no or something else per item, and that session applies, installs and commits locally.</li>
+<li><b>No findings:</b> silent, like the benchmark check.</li>
+</ul>
+</div>
+
+<h2>Sources</h2>
+<div class="card"><ul>
+<li><a href="https://skills.sh">skills.sh leaderboard</a> and <a href="https://skills.sh/audits">audits</a> (Gen, Socket, Snyk)</li>
+<li><a href="https://github.com/vercel-labs/skills">vercel-labs/skills</a> README and find-skills SKILL.md</li>
+<li><a href="https://github.com/mattpocock/skills">mattpocock/skills</a> README (plugin vs npx, duplicate warning)</li>
+<li><a href="https://github.com/anthropics/skills">anthropics/skills</a>, <a href="https://github.com/openai/skills">openai/skills</a> (deprecated)</li>
+<li><a href="https://www.linuxfoundation.org/press/agentic-ai-foundation-announces-four-new-projects-agent-skills-open-responses-openenv-and-opensandbox">Agent Skills moved to the Agentic AI Foundation</a> (2026-10-22)</li>
+<li><a href="https://venturebeat.com/security/anthropic-skill-scanners-passed-every-check-malicious-code-test-file">Skill scanners missing bundled test files</a>; <a href="https://github.com/mattpocock/skills/issues/950">mattpocock/skills #950</a></li>
+<li>Local: <code>agent-config/docs/research.md</code>, <code>vega/docs/research/community-skills.md</code>, <code>~/.agents/.skill-lock.json</code>, <code>Code/skills-lock.json</code></li>
+</ul></div>
+</main>
+</html>

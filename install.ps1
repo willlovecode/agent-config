@@ -37,24 +37,12 @@ foreach ($l in Get-Content (Join-Path $repo "codex\default.toml")) {
 }
 Set-TomlTopKeys (Join-Path $codex "config.toml") $want
 
-"Shared skills folder"
-$shared = Join-Path $u ".agents\skills"
-New-Item -ItemType Directory -Force $shared | Out-Null
-Get-ChildItem (Join-Path $repo "skills") -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-  Copy-Item -Recurse -Force $_.FullName $shared; "  skill    $($_.Name)"
-}
-
 "Claude Code"
 Copy-Item -Force (Join-Path $repo "claude\CLAUDE.md") (Join-Path $claude "CLAUDE.md"); "  CLAUDE.md updated (imports .codex\AGENTS.md)"
 $agents = Join-Path $claude "agents"
 New-Item -ItemType Directory -Force $agents | Out-Null
 Copy-Item -Force (Join-Path $repo "claude\agents\*.md") $agents
 "  subagents: $((Get-ChildItem (Join-Path $repo 'claude\agents') -Filter *.md).BaseName -join ', ')"
-# Skills from .agents\skills are linked into .claude\skills with junctions.
-Get-ChildItem $shared -Directory | ForEach-Object {
-  $link = Join-Path $claude "skills\$($_.Name)"
-  if (-not (Test-Path $link)) { cmd /c mklink /J "$link" "$($_.FullName)" | Out-Null; "  linked   $($_.Name)" }
-}
 
 # modelSettings is merged per model id; entries not in the repo are kept.
 $sp = Join-Path $claude "settings.json"
@@ -66,5 +54,7 @@ foreach ($p in $ms.PSObject.Properties) {
 }
 [IO.File]::WriteAllText($sp, ($s | ConvertTo-Json -Depth 20), $utf8)
 "  modelSettings: $(($ms.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value.effortLevel)" }) -join ', ')"
+
+& (Join-Path $repo "skills\install-skills.ps1")
 
 "Done. Start a new Codex and Claude Code session to pick up the changes."
