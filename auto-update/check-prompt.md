@@ -44,7 +44,8 @@ In `reading.recommendations` give one entry per task and tool (claude: all six
 tasks; codex: hardest, everyday, implement, mechanical, scout), using
 FrontierCode model names (for example "Claude Opus 5.5", "GPT-6.1 Sol"), with
 its score in percent and cost. In `reading.never_use` list every dominated
-Claude or GPT-6.x setting (one entry per model and effort). In `changes` list each change in one sentence
+setting of the models your recommendations name (one entry per model and
+effort); leave out models no task uses. In `changes` list each change in one sentence
 with the old and new numbers; leave it empty when nothing changed. Set
 `reading.date` to today. Set `check_model` to the Claude model id (for example
 claude-haiku-5-5) and effort you would recommend for the next run of this check.
