@@ -1,6 +1,5 @@
-# Applies this repo's agent config to Codex and Claude Code, and clears out the
-# skills and hooks retired on 2026-10-07. Safe to re-run. Backups of the old
-# setup are in Code\_archive\codex-config-2026-10-07 and claude-config-2026-10-07.
+# Applies this repo's agent config to Codex and Claude Code. Only adds and
+# updates: it never deletes skills, agents, hooks or plugins. Safe to re-run.
 $ErrorActionPreference = "Stop"
 $repo   = $PSScriptRoot
 $u      = $env:USERPROFILE
@@ -8,18 +7,35 @@ $codex  = Join-Path $u ".codex"
 $claude = Join-Path $u ".claude"
 $utf8   = New-Object System.Text.UTF8Encoding $false
 
-function Remove-Path($p) {
-  if (-not (Test-Path -LiteralPath $p) -and -not (Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue)) { return }
-  $item = Get-Item -LiteralPath $p -Force
-  if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { cmd /c rmdir "$p" | Out-Null }   # link: remove the link only
-  else { Remove-Item -LiteralPath $p -Recurse -Force }
-  "  removed  $p"
+# Sets each key from $values in the top-level (pre-[table]) part of a TOML file,
+# leaving every other line as it was.
+function Set-TomlTopKeys($path, $values) {
+  $text  = [IO.File]::ReadAllText($path)
+  $nl    = if ($text -match "`r`n") { "`r`n" } else { "`n" }
+  $lines = [Collections.Generic.List[string]]($text -split "\r?\n")
+  $end   = $lines.FindIndex([Predicate[string]]{ param($l) $l -match '^\s*\[' })
+  if ($end -lt 0) { $end = $lines.Count }
+  foreach ($key in $values.Keys) {
+    $line = "$key = $($values[$key])"
+    $i = -1
+    for ($j = 0; $j -lt $end; $j++) { if ($lines[$j] -match "^\s*$([regex]::Escape($key))\s*=") { $i = $j; break } }
+    if ($i -ge 0) {
+      if ($lines[$i] -ne $line) { "  config.toml: $($lines[$i].Trim()) -> $line" }
+      $lines[$i] = $line
+    } else { $lines.Insert(0, $line); $end++; "  config.toml: added $line" }
+  }
+  [IO.File]::WriteAllText($path, ($lines -join $nl), $utf8)
 }
 
 "Codex"
 Copy-Item -Force (Join-Path $repo "AGENTS.md") (Join-Path $codex "AGENTS.md"); "  AGENTS.md updated"
-Get-ChildItem -Force (Join-Path $codex "skills") -Directory -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -ne ".system" } | ForEach-Object { Remove-Path $_.FullName }
+foreach ($p in "deep","quick") { Copy-Item -Force (Join-Path $repo "codex\$p.config.toml") (Join-Path $codex "$p.config.toml") }
+"  profiles deep, quick updated"
+$want = [ordered]@{}
+foreach ($l in Get-Content (Join-Path $repo "codex\default.toml")) {
+  if ($l -match '^\s*(model|model_reasoning_effort)\s*=\s*(.+?)\s*$') { $want[$matches[1]] = $matches[2] }
+}
+Set-TomlTopKeys (Join-Path $codex "config.toml") $want
 
 "Shared skills folder"
 $shared = Join-Path $u ".agents\skills"
@@ -32,25 +48,23 @@ Get-ChildItem (Join-Path $repo "skills") -Directory -ErrorAction SilentlyContinu
 Copy-Item -Force (Join-Path $repo "claude\CLAUDE.md") (Join-Path $claude "CLAUDE.md"); "  CLAUDE.md updated (imports .codex\AGENTS.md)"
 $agents = Join-Path $claude "agents"
 New-Item -ItemType Directory -Force $agents | Out-Null
-Get-ChildItem $agents -Filter *.md | Remove-Item -Force
-Copy-Item -Force (Join-Path $repo "claude\agents\*.md") $agents; "  subagents: $((Get-ChildItem $agents -Filter *.md).BaseName -join ', ')"
-foreach ($s in "browser-automation","game-development",".trash") { Remove-Path (Join-Path $claude "skills\$s") }
+Copy-Item -Force (Join-Path $repo "claude\agents\*.md") $agents
+"  subagents: $((Get-ChildItem (Join-Path $repo 'claude\agents') -Filter *.md).BaseName -join ', ')"
 # Skills from .agents\skills are linked into .claude\skills with junctions.
 Get-ChildItem $shared -Directory | ForEach-Object {
   $link = Join-Path $claude "skills\$($_.Name)"
   if (-not (Test-Path $link)) { cmd /c mklink /J "$link" "$($_.FullName)" | Out-Null; "  linked   $($_.Name)" }
 }
 
-if (Get-Command claude -ErrorAction SilentlyContinue) {
-  try { claude plugin uninstall "last30days@last30days-skill" 2>&1 | Out-Null } catch {}
-  try { claude plugin marketplace remove "last30days-skill" 2>&1 | Out-Null } catch {}
-}
+# modelSettings is merged per model id; entries not in the repo are kept.
 $sp = Join-Path $claude "settings.json"
 $s  = Get-Content $sp -Raw | ConvertFrom-Json
-if ($s.PSObject.Properties.Name -contains "hooks") { $s.PSObject.Properties.Remove("hooks"); "  agent-flow hooks removed" }
-if ($s.enabledPlugins -and ($s.enabledPlugins.PSObject.Properties.Name -contains "last30days@last30days-skill")) {
-  $s.enabledPlugins.PSObject.Properties.Remove("last30days@last30days-skill"); "  last30days plugin disabled"
+$ms = Get-Content (Join-Path $repo "claude\model-settings.json") -Raw | ConvertFrom-Json
+if (-not $s.modelSettings) { $s | Add-Member -NotePropertyName modelSettings -NotePropertyValue ([pscustomobject]@{}) }
+foreach ($p in $ms.PSObject.Properties) {
+  $s.modelSettings | Add-Member -Force -NotePropertyName $p.Name -NotePropertyValue $p.Value
 }
 [IO.File]::WriteAllText($sp, ($s | ConvertTo-Json -Depth 20), $utf8)
+"  modelSettings: $(($ms.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value.effortLevel)" }) -join ', ')"
 
 "Done. Start a new Codex and Claude Code session to pick up the changes."

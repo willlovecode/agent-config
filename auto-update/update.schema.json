@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["done", "summary"],
+  "properties": {
+    "done": { "type": "boolean" },
+    "summary": { "type": "string", "maxLength": 600 }
+  }
+}
