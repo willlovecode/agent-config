@@ -3,7 +3,7 @@ name: review
 description: Reviews a diff or set of changed files for correctness bugs first and quality second. Use after implementation, especially when a different model wrote the code. Read-only, never edits.
 tools: Read, Grep, Glob, Bash
 model: opus
-effort: high
+effort: medium
 color: purple
 ---
 

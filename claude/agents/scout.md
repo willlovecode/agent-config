@@ -3,6 +3,7 @@ name: scout
 description: Locates code, config and prior art across the repo and reports back a compact map with file:line references. Use proactively before any implementation or debugging task that needs to know where things live. Cheap and fast - prefer this over reading many files yourself.
 tools: Read, Grep, Glob
 model: haiku
+effort: medium
 color: cyan
 ---
 
