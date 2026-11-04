@@ -68,7 +68,18 @@ function Toast($title, $body, $report, [switch]$sticky) {
     $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
   } catch { Log "toast failed: $_" }
-  if ($report) { try { Invoke-Item -LiteralPath $report } catch { Log "open report failed: $_" } }
+  if ($report) { try { Open-InBrowser $report } catch { Log "open report failed: $_" } }
+}
+
+# .html files may have no default app (here only https links do), so use the
+# https handler's command line with the report path.
+function Open-InBrowser($path) {
+  $progId = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice' -ErrorAction SilentlyContinue).ProgId
+  $cmd = if ($progId) { (Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$progId\shell\open\command" -ErrorAction SilentlyContinue).'(default)' }
+  if ($cmd -match '^\s*"([^"]+)"\s*(.*)$') {
+    $argLine = if ($matches[2] -match '%1') { $matches[2].Replace('%1', $path) } else { "$($matches[2]) `"$path`"" }
+    Start-Process -FilePath $matches[1] -ArgumentList $argLine
+  } else { Start-Process -FilePath "explorer.exe" -ArgumentList "`"$path`"" }
 }
 
 # Headless Claude run; returns the parsed structured output or throws.
