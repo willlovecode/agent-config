@@ -71,6 +71,8 @@ function Toast($title, $body, $report, [switch]$sticky) {
     $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
   } catch { Log "toast failed: $_" }
+  # Toast clicks are unreliable for unpackaged scripts, so a report also opens on its own.
+  if ($report) { try { Invoke-Item -LiteralPath $report } catch { Log "open report failed: $_" } }
 }
 
 # Headless Claude run; returns the parsed structured output or throws.
