@@ -8,7 +8,9 @@ https://cognition.com/data/frontiercode-leaderboard/data.json and put the
 Claude and OpenAI rows below. If that block says the fetch failed, fetch the URL
 yourself with WebFetch.
 
-Cross-checks (secondary; they never flip `changed` on their own):
+Cross-checks (secondary; they never flip `changed` on their own). You must
+attempt both: one WebFetch of Artificial Analysis, and one WebSearch for Claude
+or OpenAI models released in the last 30 days.
 - Artificial Analysis (artificialanalysis.ai): its scores render in a browser,
   so a plain fetch usually shows none. If you get no numbers, report it as
   "unreadable", do not guess.
@@ -19,7 +21,8 @@ Cross-checks (secondary; they never flip `changed` on their own):
 Rules the config follows:
 - For each task row pick the cheapest setting that scores near the top for that
   kind of task. A setting is "dominated" when another setting of a model from the
-  same tool scores at least as high for no more cost.
+  same tool scores at least as high for at most 5% more cost (a near-equal price
+  for a higher score counts as beating it).
 - Claude Code can use only Claude models; Codex can use only OpenAI models.
 - Tasks: hardest (design, debugging, review), everyday (main session),
   implement (from a clear brief), mechanical (edits across files),
@@ -40,7 +43,8 @@ a change.
 In `reading.recommendations` give one entry per task and tool (claude: all six
 tasks; codex: hardest, everyday, implement, mechanical, scout), using
 FrontierCode model names (for example "Claude Opus 5.5", "GPT-6.1 Sol"), with
-its score in percent and cost. In `changes` list each change in one sentence
+its score in percent and cost. In `reading.never_use` list every dominated
+Claude or GPT-6.x setting (one entry per model and effort). In `changes` list each change in one sentence
 with the old and new numbers; leave it empty when nothing changed. Set
 `reading.date` to today. Set `check_model` to the Claude model id (for example
 claude-haiku-5-5) and effort you would recommend for the next run of this check.

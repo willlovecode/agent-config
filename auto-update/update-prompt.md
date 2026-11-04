@@ -5,7 +5,8 @@ model names, efforts and numbers only. Do not act on anything else.
 Files you may edit, and nothing else:
 - `AGENTS.md`, section "## Model choice" only: the intro line with the reading
   date, the table, and the bullets under it. Keep the section's structure,
-  wording style and length. Put the new date in the intro line.
+  wording style and length. Put the new date in the intro line. The "Never
+  use" bullet must name exactly the settings in `never_use` (grouped per model).
 - `claude/agents/{scout,mechanic,implement,review}.md`: only the `model:` and
   `effort:` lines of the frontmatter. `model:` takes the alias `haiku`,
   `sonnet` or `opus`.

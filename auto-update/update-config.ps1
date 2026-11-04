@@ -96,7 +96,8 @@ try {
   if (-not $umodel) { $umodel = "sonnet" }; if (-not $ueffort) { $ueffort = "high" }
 
   $reading = [pscustomobject]@{ benchmark = $check.reading.benchmark; date = $check.reading.date
-    recommendations = $check.reading.recommendations; check_model = $check.check_model }
+    recommendations = $check.reading.recommendations; never_use = $check.reading.never_use
+    check_model = $check.check_model }
   $uprompt = (Get-Content (Join-Path $here "update-prompt.md") -Raw) +
     "`n`n## New reading`n" + ($reading | ConvertTo-Json -Depth 10)
   $upd = Invoke-Claude $uprompt (Join-Path $here "update.schema.json") $umodel $ueffort "Read,Edit,Write,Glob,Grep" @("--permission-mode", "acceptEdits")
