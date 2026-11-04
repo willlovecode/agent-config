@@ -58,7 +58,8 @@ function Toast($title, $body, $report, [switch]$sticky) {
   try {
     [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
     [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
-    $open = if ($report) { Esc ([Uri]$report).AbsoluteUri } else { "" }
+    # Toasts from unpackaged apps can't open file: links; agentcfg: is registered by register-task.ps1.
+    $open = if ($report) { Esc "agentcfg:report/$([Uri]::EscapeDataString((Split-Path $report -Leaf)))" } else { "" }
     $launch = if ($open) { " activationType=`"protocol`" launch=`"$open`"" } else { "" }
     $scenario = if ($sticky) { " scenario=`"reminder`"" } else { "" }
     $actions = @()
