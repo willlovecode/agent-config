@@ -81,7 +81,9 @@ function Open-InBrowser($path) {
   $cmd = if ($progId) { (Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$progId\shell\open\command" -ErrorAction SilentlyContinue).'(default)' }
   if ($cmd -match '^\s*"([^"]+)"\s*(.*)$') {
     $exe = $matches[1]; $rest = $matches[2]
-    $argLine = if ($rest.Contains('%1')) { $rest.Replace('%1', "`"$path`"").Replace('""', '"') } else { "$rest `"$path`"" }
+    # A file: URI has no spaces, so it needs no quotes; Chromium's --single-argument would keep them literally.
+    $uri = ([Uri]$path).AbsoluteUri
+    $argLine = if ($rest.Contains('%1')) { $rest.Replace('"%1"', $uri).Replace('%1', $uri) } else { "$rest $uri" }
     Start-Process -FilePath $exe -ArgumentList $argLine
   } else { Start-Process -FilePath "explorer.exe" -ArgumentList "`"$path`"" }
 }
