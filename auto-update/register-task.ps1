@@ -14,13 +14,3 @@ Register-ScheduledTask -TaskName "agent-config auto-update" -Action $action -Tri
   -Settings $settings -Principal $principal -Force `
   -Description "Checks coding-agent benchmarks and updates C:\Users\walbe\Code\agent-config (local commits only)." | Out-Null
 "registered: agent-config auto-update (logon +2 min, network only)"
-
-# agentcfg: link handler so a click on a toast opens its HTML report (current user only).
-$key = "HKCU:\Software\Classes\agentcfg"
-New-Item -Force $key | Out-Null
-Set-ItemProperty $key "(default)" "URL:agent-config report"
-Set-ItemProperty $key "URL Protocol" ""
-New-Item -Force "$key\shell\open\command" | Out-Null
-$handler = Join-Path $PSScriptRoot "open-report.ps1"
-Set-ItemProperty "$key\shell\open\command" "(default)" "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$handler`" `"%1`""
-"registered: agentcfg: link handler"

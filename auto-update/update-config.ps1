@@ -52,26 +52,22 @@ $($body -join "`n")
   return $path
 }
 
-# $report: optional HTML file; clicking the toast or its button opens it.
+# $report: optional HTML file, opened in the browser right after the toast.
 # $sticky: stays on screen until dismissed (reminder scenario).
 function Toast($title, $body, $report, [switch]$sticky) {
   try {
     [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
     [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
-    # Toasts from unpackaged apps can't open file: links; agentcfg: is registered by register-task.ps1.
-    $open = if ($report) { Esc "agentcfg:report/$([Uri]::EscapeDataString((Split-Path $report -Leaf)))" } else { "" }
-    $launch = if ($open) { " activationType=`"protocol`" launch=`"$open`"" } else { "" }
+    # Toasts from unpackaged scripts can't open links (file: or custom), so the report is opened below instead.
     $scenario = if ($sticky) { " scenario=`"reminder`"" } else { "" }
-    $actions = @()
-    if ($open) { $actions += "<action content=`"Open report`" activationType=`"protocol`" arguments=`"$open`"/>" }
-    if ($sticky) { $actions += "<action content=`"Dismiss`" activationType=`"system`" arguments=`"dismiss`"/>" }
-    $xmlText = "<toast$launch$scenario><visual><binding template=`"ToastGeneric`"><text>$(Esc $title)</text>" +
-      "<text>$(Esc $body)</text></binding></visual><actions>$($actions -join '')</actions></toast>"
+    $actions = if ($sticky) { "<action content=`"Dismiss`" activationType=`"system`" arguments=`"dismiss`"/>" } else { "" }
+    $note = if ($report) { "<text>Full report opened in your browser.</text>" } else { "" }
+    $xmlText = "<toast$scenario><visual><binding template=`"ToastGeneric`"><text>$(Esc $title)</text>" +
+      "<text>$(Esc $body)</text>$note</binding></visual><actions>$actions</actions></toast>"
     $xml = [Windows.Data.Xml.Dom.XmlDocument]::new(); $xml.LoadXml($xmlText)
     $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
   } catch { Log "toast failed: $_" }
-  # Toast clicks are unreliable for unpackaged scripts, so a report also opens on its own.
   if ($report) { try { Invoke-Item -LiteralPath $report } catch { Log "open report failed: $_" } }
 }
 
