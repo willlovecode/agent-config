@@ -1,0 +1,30 @@
+# agtk profile: the answers and the chosen items. `agtk apply --profile profiles/home`.
+# profile.json next to it is the same setup for the PowerShell fallback installer;
+# `agtk check` fails when the two disagree.
+description: "Home desktop: personal accounts, FrontierCode model table, auto-update on."
+answers:
+  use: personal
+  tools: [claude_code, codex]
+  stacks: [python, java, spring, javascript]
+  work: [greenfield, research, data]
+  autonomy: autonomous
+  budget: normal
+items:
+  - instructions-base
+  - git-guard
+  - codex-rules
+  - subagents
+  - tdd
+  - diagnosing-bugs
+  - grilling
+  - grill-me
+  - paper-lookup
+  - context7
+  - pyright-lsp
+project_items:
+  - project: C:\Users\walbe\Code\energy-billing
+    items: [spring-boot-skill]
+instructions: AGENTS.md
+claude_model_settings: claude/model-settings.json
+codex_defaults: codex/default.toml
+codex_profiles: [codex/deep.config.toml, codex/quick.config.toml]

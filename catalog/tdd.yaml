@@ -1,0 +1,17 @@
+id: tdd
+kind: skill
+pack: core
+summary: test-first loop
+tools: [claude_code, codex]
+source:
+  repo: mattpocock/skills
+  path: skills/engineering/tdd
+  commit: 4ae2317ddb22b046e26455e4f9c9b3aaaf62212d
+  license: MIT
+vendored: packs/core/skills/tdd
+audit: Gen Pass, Socket Pass, Snyk Pass; fired on 2/2 prompts in both tools, 0/3 negatives
+recommend_when: always
+never_when: work contains research and not stacks
+why:
+  recommended: test-first loop for features and bug fixes
+  never: no code work chosen

@@ -3,6 +3,30 @@
 A portable toolkit for how coding agents (Claude Code and Codex) behave, on any
 machine. Design: `docs/portable-toolkit-design.md`.
 
+## agtk (phase 1: engine, no wizard yet)
+
+`agtk` is one Go binary that installs the same setup without Node or PowerShell
+(design: `docs/wizard-design.md`). The catalog (`catalog/*.yaml`) and vendored packs
+are embedded; personal profiles are read from disk.
+
+```powershell
+go build -o dist\agtk.exe .\cmd\agtk
+dist\agtk.exe apply --profile profiles\home   # later runs: dist\agtk.exe apply
+dist\agtk.exe status                          # what is installed, what is left to do
+dist\agtk.exe undo                            # restore the files the last apply changed
+dist\agtk.exe recommend                       # catalog suggestions for this machine and profile
+dist\agtk.exe project add-checks C:\path\to\repo "uv run pytest -q"
+dist\agtk.exe check                           # catalog, baseline, profile, budget checks
+```
+
+It copies itself to `~/.agtk/bin`, and the hooks run as `agtk hook git-guard` and
+`agtk hook stop-checks`. Every changed file is backed up to `~/.agtk/backups` first.
+`profiles/<p>/profile.yaml` is the agtk profile; `profile.json` stays for the
+PowerShell installer below, and `agtk check` fails when the two disagree.
+`--skip-tools` leaves out the `claude`/`npm` commands (MCP, plugins, npm packages).
+
+## PowerShell installer (fallback)
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Profile home   # or -Profile work
 ```

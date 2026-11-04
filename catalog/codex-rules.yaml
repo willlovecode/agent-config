@@ -1,0 +1,8 @@
+id: codex-rules
+kind: rules
+summary: Codex execpolicy rules forbid push and reset --hard
+tools: [codex]
+vendored: enforcement/codex-rules/agent-config.rules
+recommend_when: always
+why:
+  recommended: works without hook trust, so it guards Codex even before /hooks is run

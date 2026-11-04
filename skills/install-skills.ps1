@@ -55,7 +55,10 @@ if ($Project) {
 foreach ($s in $selected) {
   $src = Join-Path $repo "packs\$($s.pack)\skills\$($s.name)"
   if (-not (Test-Path (Join-Path $src "SKILL.md"))) { throw "$($s.name): no SKILL.md in $src" }
-  $hash = (Get-ChildItem -Recurse -File $src | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash }) -join ""
+  # Ordinal file order (not culture order), so agtk computes the same hash.
+  [string[]]$files = (Get-ChildItem -Recurse -File $src).FullName
+  [Array]::Sort($files, [StringComparer]::OrdinalIgnoreCase)
+  $hash = ($files | ForEach-Object { (Get-FileHash $_ -Algorithm SHA256).Hash }) -join ""
   $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::ASCII.GetBytes($hash))).Replace("-", "").Substring(0, 16)
   $home_ = if ($s.tools -contains "codex") { $shared } else { $claude }
   $dest  = Join-Path $home_ $s.name

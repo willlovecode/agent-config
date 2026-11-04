@@ -1,0 +1,20 @@
+# agtk profile: the answers and the chosen items. `agtk apply --profile profiles/work`.
+# profile.json next to it is the same setup for the PowerShell fallback installer.
+description: "Work machine: corporate LLM gateway, no personal data, no third-party MCP, no auto-update."
+answers:
+  use: corporate_gateway
+  tools: [claude_code, codex]
+  stacks: [java]
+  work: [legacy_migration]
+  autonomy: balanced
+  budget: lean
+items:
+  - instructions-base
+  - git-guard
+  - codex-rules
+  - subagents
+  - tdd
+  - diagnosing-bugs
+  - grilling
+  - grill-me
+instructions: AGENTS.md

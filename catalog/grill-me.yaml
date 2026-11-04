@@ -1,0 +1,15 @@
+id: grill-me
+kind: skill
+pack: core
+summary: /grill-me alias for grilling
+tools: [claude_code, codex]
+source:
+  repo: mattpocock/skills
+  path: skills/productivity/grill-me
+  commit: 4ae2317ddb22b046e26455e4f9c9b3aaaf62212d
+  license: MIT
+vendored: packs/core/skills/grill-me
+explicit_only: true
+recommend_when: always
+why:
+  recommended: short name for grilling; explicit-only

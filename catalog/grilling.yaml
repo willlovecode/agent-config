@@ -1,0 +1,15 @@
+id: grilling
+kind: skill
+pack: core
+summary: design interview in rounds (call it by name)
+tools: [claude_code, codex]
+source:
+  repo: mattpocock/skills
+  path: skills/productivity/grilling
+  commit: 4ae2317ddb22b046e26455e4f9c9b3aaaf62212d
+  license: MIT
+vendored: packs/core/skills/grilling
+explicit_only: true
+recommend_when: always
+why:
+  recommended: explicit-only, so it costs nothing until called and never starts subagents uninvited

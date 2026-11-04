@@ -1,0 +1,8 @@
+id: instructions-base
+kind: instructions
+summary: working agreement (communication, scope, code, secrets, commits)
+tools: [claude_code, codex]
+vendored: base/AGENTS.md
+recommend_when: always
+why:
+  recommended: the shared working agreement every profile builds on

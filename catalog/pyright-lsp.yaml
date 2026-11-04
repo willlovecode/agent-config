@@ -1,0 +1,12 @@
+id: pyright-lsp
+kind: plugin
+summary: Python type checking as you edit (LSP)
+tools: [claude_code]
+plugin:
+  id: pyright-lsp@claude-plugins-official
+  marketplace: anthropics/claude-plugins-official
+npm: [pyright@1.1.414]
+recommend_when: stacks contains python and node
+why:
+  recommended: Python chosen and Node found for the pyright server
+  not_recommended: needs Python work and Node on PATH

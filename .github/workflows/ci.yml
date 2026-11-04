@@ -5,6 +5,27 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Go vet and tests (hooks, catalog, install)
+        run: |
+          go vet ./...
+          go test ./...
+      - name: Build agtk
+        run: go build -o dist/agtk.exe ./cmd/agtk
+      - name: agtk check (catalog, baseline, profiles, budget)
+        run: dist/agtk.exe check
+      - name: agtk apply (fake home, both profiles)
+        shell: powershell
+        run: |
+          foreach ($p in "home", "work") {
+            $fake = Join-Path $env:RUNNER_TEMP "agtk-home-$p"
+            New-Item -ItemType Directory -Force $fake | Out-Null
+            $env:USERPROFILE = $fake
+            & .\dist\agtk.exe apply --profile "profiles\$p" --tier A --skip-tools
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
       - name: Context budget per profile
         run: node checks/budget.mjs
       - name: Hook tests

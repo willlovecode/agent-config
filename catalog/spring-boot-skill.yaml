@@ -1,0 +1,19 @@
+id: spring-boot-skill
+kind: skill
+pack: java
+scope: project
+summary: Spring Boot 4 practices (per project, call it by name)
+tools: [claude_code, codex]
+source:
+  repo: sivaprasadreddy/sivalabs-agent-skills
+  path: skills/spring-boot
+  commit: 94f8d9fa21ba659e85cbb8a9b33f6e84883de5ef
+  license: MIT
+vendored: packs/java/skills/spring-boot-skill
+audit: Gen Pass, Socket Pass; known issues appended (packs/MODIFICATIONS.md)
+explicit_only: true
+modified: true
+recommend_when: stacks contains spring
+why:
+  recommended: Spring Boot chosen; installed into the chosen projects only
+  not_recommended: only for Spring Boot projects

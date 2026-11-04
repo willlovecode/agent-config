@@ -1,0 +1,19 @@
+id: paper-lookup
+kind: skill
+pack: research
+summary: 18 scholarly APIs with provenance
+tools: [claude_code, codex]
+source:
+  repo: K-Dense-AI/scientific-agent-skills
+  path: skills/paper-lookup
+  commit: a25cf9ec00e2745d03f8704acf6f6919694ccd9a
+  license: MIT
+vendored: packs/research/skills/paper-lookup
+audit: Gen Pass, Socket Pass; fired 2/2 in Codex, 1/4 in Claude Code (call /paper-lookup there)
+modified: true
+recommend_when: work contains research
+never_when: use != personal
+why:
+  recommended: research work chosen
+  not_recommended: only useful for literature research
+  never: sends queries to public scholarly APIs; off on corporate machines

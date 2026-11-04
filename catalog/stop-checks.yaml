@@ -1,0 +1,8 @@
+id: stop-checks
+kind: hook
+scope: project
+summary: checks run before the agent stops
+tools: [claude_code, codex]
+recommend_when: always
+why:
+  recommended: wire it per project with `agtk project add-checks <dir> "<command>"`

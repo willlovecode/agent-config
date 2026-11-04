@@ -156,6 +156,27 @@ plus a profile file is the whole kit.
 
 The current PowerShell installer keeps working until phase 1 replaces it.
 
+### Phase 1 as built (2026-11-04)
+
+- Layout: `cmd/agtk` (CLI), `internal/{hooks,catalog,profile,scan,install,check,ojson}`,
+  `assets.go` embeds `catalog/`, `base/`, `packs/`, the Codex rules and
+  `skills/baseline.json`. Personal profiles are not embedded.
+- agtk keeps its binary, backups and `state.json` in `~/.agtk`. The state remembers the
+  profile path, so `agtk apply` without `--profile` repeats the last one. Saving the
+  wizard's answers to `%APPDATA%\agtk\profile.yaml` comes with the wizard (phase 3).
+- The PowerShell installer stays as the fallback for machines that block unsigned
+  binaries, so `profile.json` and `skills/baseline.json` stay too. `agtk check` fails
+  when they disagree with `profile.yaml` and the catalog.
+- Instructions are still base + the profile's own `AGENTS.md`. Splitting them into
+  modules belongs with the questionnaire (phase 3).
+- The scan does not look at the GPU or the network yet (both are only shown in the
+  wizard), and it reads Codex `requirements.toml` only at the Linux path, because the
+  Windows location is not confirmed.
+- Settings files are edited with their key order kept, and written as UTF-8. That also
+  fixes the PowerShell 5.1 installer's habit of reading `settings.json` as ANSI.
+- The skill pin hash now sorts files ordinally in both installers. The old culture sort
+  in PowerShell gave a different hash for `spring-boot-skill`.
+
 ## Open questions (defaults if unanswered)
 
 - Public or private repo: default **public toolkit**, personal profiles private.

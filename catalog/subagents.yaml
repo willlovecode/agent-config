@@ -1,0 +1,9 @@
+id: subagents
+kind: agents
+pack: core
+summary: scout, mechanic, implement, review subagents
+tools: [claude_code]
+vendored: packs/core/agents
+recommend_when: always
+why:
+  recommended: cheap models for searching and mechanical edits, a reviewer for diffs

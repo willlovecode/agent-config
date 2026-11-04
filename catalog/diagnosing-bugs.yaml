@@ -1,0 +1,17 @@
+id: diagnosing-bugs
+kind: skill
+pack: core
+summary: feedback-loop debugging
+tools: [claude_code, codex]
+source:
+  repo: mattpocock/skills
+  path: skills/engineering/diagnosing-bugs
+  commit: 4ae2317ddb22b046e26455e4f9c9b3aaaf62212d
+  license: MIT
+vendored: packs/core/skills/diagnosing-bugs
+audit: Gen Pass, Socket Pass, Snyk Pass; fired on 2/2 prompts in both tools
+recommend_when: always
+never_when: work contains research and not stacks
+why:
+  recommended: builds a reproducing feedback loop before guessing at fixes
+  never: no code work chosen
