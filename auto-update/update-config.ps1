@@ -74,7 +74,10 @@ function Toast($title, $body, $report, [switch]$sticky) {
 # .html files may have no default app (here only https links do), so use the
 # https handler's command line with the report path.
 function Open-InBrowser($path) {
-  $progId = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice' -ErrorAction SilentlyContinue).ProgId
+  # Windows 11 keeps the current choice in UserChoiceLatest\ProgId; older builds in UserChoice.
+  $assoc = 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https'
+  $progId = (Get-ItemProperty "$assoc\UserChoiceLatest\ProgId" -ErrorAction SilentlyContinue).ProgId
+  if (-not $progId) { $progId = (Get-ItemProperty "$assoc\UserChoice" -ErrorAction SilentlyContinue).ProgId }
   $cmd = if ($progId) { (Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$progId\shell\open\command" -ErrorAction SilentlyContinue).'(default)' }
   if ($cmd -match '^\s*"([^"]+)"\s*(.*)$') {
     $argLine = if ($matches[2] -match '%1') { $matches[2].Replace('%1', $path) } else { "$($matches[2]) `"$path`"" }
