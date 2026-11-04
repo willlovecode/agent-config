@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Add-on baseline research</title>
+<style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1d1d1f;--mute:#6e6e73;--card:#fff;--line:#e5e5ea;--keep:#1f7a3a;--drop:#b3261e;--ask:#8a5a00;--add:#0b57d0}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f5f5f7;--mute:#a1a1a6;--card:#2c2c2e;--line:#3a3a3c;--keep:#5fd17a;--drop:#ff8a80;--ask:#f2c14e;--add:#8ab4f8}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif}
+main{max-width:880px;margin:32px auto;padding:0 16px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:32px 0 8px}h3{font-size:15px;margin:0 0 6px}
+.meta{color:var(--mute);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-top:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;border-top:0}
+td:first-child{font-weight:700;white-space:nowrap}
+.kv td:first-child{font-weight:600;color:var(--mute);width:120px;white-space:normal}
+.tag{font-weight:700;font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.keep{color:var(--keep)}.drop{color:var(--drop)}.ask{color:var(--ask)}.add{color:var(--add)}
+code{font:13px Consolas,monospace;overflow-wrap:anywhere}
+.wrap{overflow-x:auto}
+ul{margin:6px 0;padding-left:22px}
+</style>
+<main>
+<h1>Add-on baseline research</h1>
+<p class="meta">2026-11-04 &middot; for approval &middot; nothing installed in your real setup &middot; reply with the numbers, e.g. "1-4 yes, 8 later, 10 no"</p>
+
+<div class="card">
+<b>Summary.</b> I recommend a small, enforced setup: <b>hooks you can rely on</b> (a git guard in both tools, Codex execpolicy rules as a backstop, and a per-project Stop check runner),
+<b>two auto-firing Matt Pocock skills</b> (tdd, diagnosing-bugs) plus grilling on demand, <b>Context7</b> as the only MCP server, and the <b>Python LSP plugin</b> for Claude Code.
+The Spring Boot skill goes into the practice project only, explicit-only. K-Dense paper-lookup is a "consider", with its tool pre-approval stripped. Everything else I looked at duplicates a built-in, did not fire in trials, or carries a cost or risk that isn't worth it.
+<br><br>
+<b>Second pass (same day).</b> You asked me to close the gaps of the first draft. This pass: read the skills.sh trending tab and the audit verdicts of 40 skills, Hacker News (Algolia API) and Reddit (Arctic Shift archive) for the last 60 days, GitHub trending and new repos, every file of the Spring Boot and K-Dense skills myself, 13 trigger prompts in both tools on the models you actually use, LSP diagnostics with debug logs (headless and interactive), and Codex's hook trust gate without the bypass flag. X stays closed: it needs your login. Changes to the verdicts are marked <b>(updated)</b>.
+<br><br>
+<b>Listing count.</b> If you approve every "yes", Claude Code lists <b>2 new skill descriptions</b> (tdd, diagnosing-bugs), or <b>3</b> if you also approve paper-lookup. grilling, grill-me and spring-boot are explicit-only and not listed. That is on top of your account skills. Codex lists the same 2 or 3.
+<br><br>
+<b>Models used</b> (AGENTS.md table, FrontierCode 1.1 reading of 2026-11-04): main session Opus at medium; six searching and reading agents on Haiku at medium (no Opus fan-out); first-pass trials on Haiku; second-pass trigger trials on <b>Opus at medium</b> (your Claude Code main model) and <b>Codex's default</b> (GPT-6.1 Sol, medium); hook and LSP mechanics on Haiku, since those don't depend on the model; Codex second opinion on <code>--profile deep</code> (GPT-6 Astra, max).
+</div>
+
+<h2>Recommendations: hooks</h2>
+
+<div class="card"><h3>1 &middot; git-guard hook, Claude Code (global) <span class="tag add">ADD &middot; YES</span></h3>
+<table class="kv">
+<tr><td>What</td><td>PreToolUse on <code>Bash|PowerShell</code> runs <code>node agent-config/hooks/git-guard.mjs</code> (exec form, no shell). It denies <code>git push</code>, <code>git reset --hard</code> and <code>git clean</code>; <code>git clean -n</code> and <code>--dry-run</code> still work. It returns <code>permissionDecision: "deny"</code> with a reason telling the agent to ask you.</td></tr>
+<tr><td>Source</td><td>Written here (about 90 lines, Node, no dependencies). Lives in agent-config; <code>install.ps1</code> merges it into <code>~/.claude/settings.json</code>.</td></tr>
+<tr><td>Serves</td><td>Claude Code; every project.</td></tr>
+<tr><td>Adoption</td><td>Not applicable (own code). Anthropic: "to block an action regardless of what Claude decides, use a PreToolUse hook". It was the top recommendation in <code>docs/research.md</code>.</td></tr>
+<tr><td>Trial</td><td>45 of 45 unit cases pass. Denied: <code>git -C ../repo push</code>, <code>git -c x=1 push</code>, <code>/usr/bin/git push</code>, <code>&amp; "C:\Program Files\Git\cmd\git.exe" push</code>, <code>sudo git push</code>, <code>env X=1 git push</code>, <code>sh -c "git push"</code>, <code>bash -lc 'git push'</code>, <code>powershell -Command "git clean -fd"</code>, <code>powershell -EncodedCommand ...</code>, <code>cmd /c "git push"</code>, <code>git p"ush"</code>, <code>git clean -fd -- -notes</code>. Allowed: <code>git commit -m "never git push here"</code>, <code>echo git push</code>, <code>grep -r "git push" docs</code>, <code>git push-docs</code>, <code>git reset --soft</code>, <code>git clean -n</code>. In live <code>claude -p</code> runs in a scratch repo it blocked <code>git push</code>, <code>git p"ush"</code> and <code>git -C . reset --hard HEAD</code>, and let <code>git status</code> and <code>echo git push</code> run. Each call takes about 0.1 s. Six of these cases are bypasses Codex found in my first version (section 4); all are fixed.</td></tr>
+<tr><td>Risks</td><td>It is a tripwire, not a sandbox. Git aliases (<code>git config alias.p push</code>, then <code>git p</code>), scripts written to disk and then run, and commands computed at run time get past it. If the hook input can't be parsed, it denies. If <code>node</code> is missing, the hook errors and Claude Code blocks the call (fails closed).</td></tr>
+<tr><td>Overlap</td><td>Replaces the prose rule "Ask before pushing" in AGENTS.md for Claude Code. Keep the sentence for intent.</td></tr>
+<tr><td>Links</td><td><a href="https://code.claude.com/docs/en/hooks">Claude Code hooks reference</a></td></tr>
+</table></div>
+
+<div class="card"><h3>2 &middot; git-guard hook, Codex (global) <span class="tag add">ADD &middot; YES</span></h3>
+<table class="kv">
+<tr><td>What</td><td>The same script in <code>~/.codex/hooks.json</code>, PreToolUse with matcher <code>^Bash$</code>. Codex sends <code>tool_input.command</code> as a string, the same shape as Claude Code.</td></tr>
+<tr><td>Serves</td><td>Codex; every project.</td></tr>
+<tr><td>Trial</td><td>In <code>codex exec --profile quick</code> in the scratch repo it blocked <code>git push</code> and <code>git -C . reset --hard HEAD</code> ("Command blocked by PreToolUse hook: ...") and let <code>git status</code> run.</td></tr>
+<tr><td>Risks</td><td>Codex skips user hooks until you trust them: run <code>/hooks</code> once in Codex after install, and again whenever the script changes (trust is tied to its hash). My trial used <code>--dangerously-bypass-hook-trust</code>, which I would not put in your config. The tripwire limits from item 1 apply here too. Also, input Codex later types into a running shell (<code>write_stdin</code>) gets no new check (Codex's own finding).</td></tr>
+<tr><td>Trust gate (updated)</td><td>Tested without the bypass flag: <code>codex exec</code> skipped the untrusted hook <b>silently</b>, with no warning in the output, and <code>git push</code> ran (harmless, since the scratch repo has no remote). Per the docs, user-level hooks need <code>/hooks</code> trust too. The interactive TUI warns at startup when hooks need review; headless <code>exec</code> does not. So after install, and after every script update, open Codex once and trust the hook in <code>/hooks</code>. I did not run <code>/hooks</code> itself, because it writes trust into your real <code>~/.codex</code>. That is the install step. Alternative without trust: a "managed" hook in a system <code>requirements.toml</code> is trusted by policy, but needs admin rights.</td></tr>
+<tr><td>Links</td><td><a href="https://learn.chatgpt.com/docs/hooks">Codex hooks</a> (the old developers.openai.com URL redirects here)</td></tr>
+</table></div>
+
+<div class="card"><h3>3 &middot; Codex execpolicy rules for push and reset --hard <span class="tag add">ADD &middot; YES (updated)</span></h3>
+<table class="kv">
+<tr><td>What</td><td><code>~/.codex/rules/agent-config.rules</code> with two <code>prefix_rule(decision="forbidden")</code> entries: <code>git push</code> and <code>git reset --hard</code>. Each has <code>match</code> and <code>not_match</code> examples that Codex validates at load.</td></tr>
+<tr><td>Why</td><td>It is a second layer that needs no hook trust and also applies when Codex asks to run outside the sandbox. It moved from "consider" to "yes" because the hook in item 2 turned out to switch off silently whenever it isn't trusted (see item 2).</td></tr>
+<tr><td>Trial</td><td><code>codex execpolicy check</code>: forbidden for <code>git push</code> and <code>git reset --hard</code>; no match for <code>git -C . push</code> (literal prefix only). I left out <code>git clean</code> because a prefix rule cannot exempt <code>-n</code>.</td></tr>
+<tr><td>Risks</td><td>Low. Note that your <code>~/.codex/rules/default.rules</code> holds about 30 stale "allow" rules from last30days runs (WSL Python paths). They are harmless now, but worth clearing separately; I did not touch them.</td></tr>
+<tr><td>Links</td><td><a href="https://learn.chatgpt.com/docs/agent-configuration/rules">Codex rules</a></td></tr>
+</table></div>
+
+<div class="card"><h3>4 &middot; Stop-hook check runner, per project <span class="tag add">ADD &middot; YES</span></h3>
+<table class="kv">
+<tr><td>What</td><td><code>agent-config/hooks/stop-checks.mjs "&lt;check command&gt;" [timeout]</code>. On Stop it runs the project's checks and returns <code>decision: "block"</code> with the last 40 output lines if they fail, so the agent keeps working. It blocks at most twice in a row, then lets the agent stop and report. It skips when HEAD, the diff and the untracked files' contents are unchanged since the last pass, so chat-only turns cost nothing. The command runs in cmd.exe on Windows. The same JSON works in both tools.</td></tr>
+<tr><td>Wiring</td><td>Per project, not global (each project has its own commands). Proposed first two, from their own files:
+<ul><li>vbgym: <code>uv run ruff check . &amp;&amp; uv run pytest -q</code> (from pyproject: ruff and pytest dev group)</li>
+<li>energy-billing: <code>.\mvnw.cmd -q test</code> (from its AGENTS.md; timeout 300 s)</li></ul>
+Each goes into that project's <code>.claude/settings.json</code> and <code>.codex/hooks.json</code>. Codex needs a <code>/hooks</code> trust per project.</td></tr>
+<tr><td>Trial</td><td>In a scratch repo whose check fails on the word BAD, I asked each tool to add BAD. <b>Claude Code</b> (Haiku): the hook blocked, the model saw the failure, did not cheat, and asked whether to revert or change the rule; the second stop went through (loop guard). <b>Codex</b> (quick): "hook: Stop Blocked", then it explained why the check can't pass, then "Stop Completed". After Codex's review I fixed the cache (it now covers HEAD and untracked contents) and the retry limit, then unit-tested every state: pass, cached, fail, retry, give up, new stop, untracked change. I did not repeat the live runs after that fix.</td></tr>
+<tr><td>Risks</td><td>The test suite runs at the end of every turn that changed files. Maven tests take time, so drop to <code>-q compile</code> there if it gets in the way. A check the agent cannot fix costs one extra model turn.</td></tr>
+<tr><td>Overlap</td><td>None. <code>docs/research.md</code> recommended exactly this ("Stop hook as a deterministic gate").</td></tr>
+</table></div>
+
+<h2>Recommendations: skills</h2>
+
+<div class="card"><h3>5 &middot; tdd (Matt Pocock) <span class="tag add">ADD &middot; YES</span></h3>
+<table class="kv">
+<tr><td>Source</td><td><code>mattpocock/skills</code> &middot; <code>skills/engineering/tdd</code> @ <code>4ae2317ddb22b046e26455e4f9c9b3aaaf62212d</code> (2026-10-31)</td></tr>
+<tr><td>Serves</td><td>Claude Code and Codex (ships <code>agents/openai.yaml</code>); Java, Python and web work.</td></tr>
+<tr><td>Adoption</td><td>Repo 312,719 stars, pushed today. skills.sh: 1.2M installs all-time, #118 on the 24-hour trending list (5.4K). Audits read from its skills.sh page: <b>Gen Pass, Socket Pass, Snyk Pass</b>.</td></tr>
+<tr><td>Read</td><td>All 4 files: SKILL.md, tests.md, mocking.md, openai.yaml. Markdown only; no scripts, no network, no <code>allowed-tools</code>.</td></tr>
+<tr><td>Trial (updated)</td><td>Claude Code on Opus at medium: fired on <b>2 of 2</b> positive prompts ("Add a slugify(text) function... test-first", "input validation... using red-green-refactor") and on 0 of 3 negative ones. Codex: see the trigger table below.</td></tr>
+<tr><td>Risks</td><td>It asks you to confirm the test seams before the first test. That fits your learning projects but adds a round-trip. It refers to the <code>codebase-design</code> and <code>code-review</code> skills, which won't be installed; the references are soft.</td></tr>
+<tr><td>Overlap</td><td>None among built-ins.</td></tr>
+<tr><td>Links</td><td><a href="https://github.com/mattpocock/skills/tree/4ae2317ddb22b046e26455e4f9c9b3aaaf62212d/skills/engineering/tdd">pinned folder</a> &middot; <a href="https://skills.sh/mattpocock/skills/tdd">skills.sh</a></td></tr>
+</table></div>
+
+<div class="card"><h3>6 &middot; diagnosing-bugs (Matt Pocock) <span class="tag add">ADD &middot; YES</span></h3>
+<table class="kv">
+<tr><td>Source</td><td>Same repo and commit &middot; <code>skills/engineering/diagnosing-bugs</code></td></tr>
+<tr><td>Serves</td><td>Both tools; all work areas.</td></tr>
+<tr><td>Adoption</td><td>skills.sh 890K installs. Audits from its skills.sh page: <b>Gen Pass, Socket Pass, Snyk Pass</b>.</td></tr>
+<tr><td>Read</td><td>All 3 files: SKILL.md (6 phases: feedback loop, reproduce, hypothesise, instrument, fix with regression test, clean up), openai.yaml, and <code>scripts/hitl-loop.template.sh</code>. That script is a bash template that prompts a human with <code>read</code>; it makes no network calls. It tells the agent to redact secrets before showing output.</td></tr>
+<tr><td>Trial (updated)</td><td>Claude Code on Opus at medium: fired on <b>2 of 2</b> ("returns wrong sums... Debug this", "test suite got much slower... figure out why") and 0 of 3 negatives. In the first pass it also fired in Codex (it read <code>.agents/skills/diagnosing-bugs/SKILL.md</code>). Second-pass Codex results are in the trigger table below.</td></tr>
+<tr><td>Risks</td><td>The template is bash, so it needs Git Bash on Windows (you have it). Low.</td></tr>
+<tr><td>Overlap</td><td>None among built-ins. (Superpowers' systematic-debugging is the alternative; rejected below.)</td></tr>
+</table></div>
+
+<div class="card"><h3>7 &middot; grilling + grill-me (Matt Pocock) <span class="tag ask">ADD &middot; CONSIDER</span></h3>
+<table class="kv">
+<tr><td>Source</td><td>Same repo and commit &middot; <code>skills/productivity/grilling</code>, <code>skills/productivity/grill-me</code></td></tr>
+<tr><td>Serves</td><td>Both tools; planning and design (Sol, Vega, infoStacker).</td></tr>
+<tr><td>Adoption</td><td>grill-me is #2 on skills.sh (1.5M) and on the 24-hour trending list (#80, #82). Audits for both: <b>Gen Pass, Socket Pass, Snyk Pass</b>. In the Reddit thread "Am I stupid for not using any skills" (2026-10-27, 114 points), the one skill a commenter named as the only one they use is <code>/grill-me</code>. On HN (item 49948197, 2026-10-03) someone calls the grilling skill "so much better than plan mode" when paired with AskUserQuestion.</td></tr>
+<tr><td>Read</td><td>All 4 files. grill-me is a one-line explicit-only alias ("Call the Skill tool with grilling"). grilling runs rounds of numbered questions, each with a recommended answer, and sends a subagent for facts rather than asking you.</td></tr>
+<tr><td>Trial</td><td>Not trialled; it fires only on "grill" phrases, by its own description.</td></tr>
+<tr><td>Risks</td><td>The fact-finding subagents cost usage. Under your table they run on the session model unless you ask for the scout. Codex pointed out that making only grill-me explicit leaves grilling free to auto-fire, so I'd mark <b>both</b> explicit-only (<code>disable-model-invocation</code> / <code>allow_implicit_invocation: false</code>). That way neither is listed, and you call <code>/grill-me</code> when you want it.</td></tr>
+<tr><td>Overlap</td><td>Partly with plan mode and the AskUserQuestion habit. This is the one to drop if you want to stay at two skills.</td></tr>
+</table></div>
+
+<div class="card"><h3>8 &middot; spring-boot (SivaLabs), project-level in energy-billing <span class="tag ask">ADD &middot; CONSIDER</span></h3>
+<table class="kv">
+<tr><td>Source</td><td><code>sivaprasadreddy/sivalabs-agent-skills</code> &middot; <code>skills/spring-boot</code> @ <code>94f8d9fa21ba659e85cbb8a9b33f6e84883de5ef</code> (2026-10-30)</td></tr>
+<tr><td>Serves</td><td>Both tools; the Werkstudent practice project only. It targets Spring Boot 4.x, and your project is on 4.1.2.</td></tr>
+<tr><td>Adoption</td><td>194 stars. The author (Siva Prasad Reddy) is a long-time Spring author, but this is below find-skills' own 1K-install / 100-star comfort line. skills.sh lists it as <code>spring-boot-skill</code>: <b>Gen Pass, Socket Pass</b>, no Snyk scan.</td></tr>
+<tr><td>Read (updated)</td><td><b>All 20 files read line by line by me</b> (SKILL.md and 19 references). Markdown only, no hidden or bidi Unicode, HTML comments only inside code examples, no secrets access, no network calls of its own. One "IMPORTANT" about Testcontainers 2.x coordinates, nothing emphatic otherwise. Defects an agent would copy:
+<ul>
+<li>Three files (testing-integration, testcontainers-wiring, slices-persistence) use the old generic <code>PostgreSQLContainer&lt;?&gt;</code>. rest-api-testing uses the Testcontainers 2.x class <code>org.testcontainers.postgresql.PostgreSQLContainer</code>, which is not generic. On Boot 4 (Testcontainers 2.x), the generic form won't compile against the new class.</li>
+<li><code>thymeleaf-extras-springsecurity6</code> is recommended for a Boot 4 / Spring Security 7 stack. That is probably the wrong artifact; check the Boot BOM.</li>
+<li>Contradictions: testing-strategy says about 95% of tests should be sliced Spring tests, while testing-unit-mocking says "most of your tests should live here" (unit). The service example calls a <code>UserEntity.create(firstName, lastName, email, password)</code> that the entity example doesn't have. The modulith doc says to put a <code>package-info</code> "inside shared" but shows it in <code>modulename.domain.models</code>. One example imports <code>dev.sivalabs.onepoint</code>, a package from another project.</li>
+<li>Expert tuning presented as default: <code>hikari.auto-commit=false</code> plus <code>provider_disables_autocommit</code>, TSID ids, a jacoco 80% gate.</li></ul></td></tr>
+<tr><td>Trial</td><td>Not trialled. On the same Boot 4.1 question, Context7 (item 9) already gave the current API.</td></tr>
+<tr><td>Risks</td><td>Heavy defaults for a beginner project you write by hand: Spring Modulith, Taikai/ArchUnit, Testcontainers only (never H2), a jacoco 80% gate, Taskfile, and Compose with Grafana and Mailpit. Its references would add dependencies and pull Docker images if followed literally. A few examples contradict each other. Hence explicit-only (<code>/spring-boot</code> when you want it), installed in <code>energy-billing/.claude/skills</code> and <code>.agents/skills</code>, not globally.</td></tr>
+<tr><td>Upside</td><td>It is a compact tour of what a 2026 Spring shop expects (MockMvcTester, RestTestClient, @ServiceConnection, ProblemDetail), which is useful interview vocabulary.</td></tr>
+</table></div>
+
+<h2>Recommendations: MCP</h2>
+
+<div class="card"><h3>9 &middot; Context7 <span class="tag ask">ADD &middot; CONSIDER</span></h3>
+<table class="kv">
+<tr><td>What</td><td>The remote server <code>https://mcp.context7.com/mcp</code> (Upstash) gives version-specific library docs. Two tools: resolve-library-id and query-docs. It works without a key; I checked with a raw JSON-RPC call.</td></tr>
+<tr><td>Config</td><td>Claude Code: <code>claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp</code>, not the plugin, so both tools use the same plain config. Codex: <code>[mcp_servers.context7] url = "https://mcp.context7.com/mcp"</code> with <code>enabled_tools = ["resolve-library-id", "query-docs"]</code> (Codex's suggestion: an allowlist, so new server tools don't appear unreviewed).</td></tr>
+<tr><td>Serves</td><td>Both tools; Spring Boot 4.1, FastAPI and fast-moving JS libraries.</td></tr>
+<tr><td>Adoption</td><td>upstash/context7: 64,181 stars, npm 4.5.0 released 2026-11-03. Listed in Anthropic's official marketplace. Practitioners name it the one MCP that cuts stale-API mistakes.</td></tr>
+<tr><td>Trial</td><td>Question: "Spring Boot 4.1 slice test for a RestClient service". With Context7 the answer cited <code>/spring-projects/spring-boot/v4.1.0</code> reference docs. Without it (WebSearch), the answer was the same but cited blogs and a mirrored Copilot skill. So the gain is better sources, not a different answer.</td></tr>
+<tr><td>Risks</td><td>A remote third-party service: queries leave your machine, and a server version can't be pinned. Noma Labs' ContextCrush (prompt injection via library "custom rules", fixed server-side 2026-02-23) shows the class of risk: docs are untrusted input. Tool descriptions say "You MUST call this function before 'Query Documentation'", which is about tool order, not over-triggering. Claude Code defers MCP tools by default, so it costs little context when idle.</td></tr>
+<tr><td>Overlap</td><td>Partly WebSearch/WebFetch.</td></tr>
+</table></div>
+
+<h2>Recommendations: plugins</h2>
+
+<div class="card"><h3>10 &middot; pyright-lsp (Anthropic) <span class="tag ask">ADD &middot; CONSIDER</span></h3>
+<table class="kv">
+<tr><td>Source</td><td><code>anthropics/claude-plugins-official</code> &middot; <code>plugins/pyright-lsp</code> (README and LICENSE; the server config is in the marketplace entry). The marketplace updates itself, so the pin is the marketplace checkout plus a pinned <code>pyright</code> npm version (1.1.414 tested).</td></tr>
+<tr><td>Serves</td><td>Claude Code only; Python (vbgym, Sol, infoStacker).</td></tr>
+<tr><td>Adoption</td><td>Official Anthropic plugin; microsoft/pyright has 15,732 stars.</td></tr>
+<tr><td>Needs</td><td><code>npm i -g pyright@1.1.414</code>, a global install outside agent-config.</td></tr>
+<tr><td>Trial (updated)</td><td>I loaded it via <code>--plugin-dir</code> with local binaries. The server starts on Windows through the npm <code>.cmd</code> shim, and hover and definition work. With Claude Code's debug log on:
+<ul>
+<li>After an Edit, pyright <b>does publish diagnostics</b> (3 or 4 per file, about 2 s later on a cold start). Claude Code logs "Registered ... for async delivery".</li>
+<li>In headless <code>claude -p</code> the delivery check never ran, so the queued diagnostics were dropped, even across four more model calls.</li>
+<li>In an <b>interactive</b> session (terminal tab) the check runs before each model call (<code>getLSPDiagnosticAttachments</code>). But it found "0 pending", because the diagnostics arrived after the last tool call of the turn. They would ride along with your next message or the next tool call. I could not send a follow-up into that session, so actual delivery is <b>still unconfirmed</b>.</li>
+<li>pyright logs "Python wurde nicht gefunden" three times: <code>python</code> on your PATH is the Microsoft Store stub. In real uv projects pyright then can't find site-packages and reports false "import could not be resolved" errors, unless each project gets a <code>pyrightconfig.json</code> pointing at <code>.venv</code>, or a real Python goes on PATH.</li></ul></td></tr>
+<tr><td>Risks</td><td>Low (local process). Diagnostics arrive late and only on the next turn, plus the interpreter problem above. Against <code>uv run ruff</code> plus the Stop hook (item 4), it adds little you'd notice. Still "consider"; lean "later".</td></tr>
+<tr><td>Overlap</td><td>Astral's ty LSP (rejected) and Serena (rejected).</td></tr>
+</table></div>
+
+<h2>Recommendations: research (new in the second pass)</h2>
+
+<div class="card"><h3>11 &middot; paper-lookup (K-Dense), with its tool pre-approval stripped <span class="tag ask">ADD &middot; CONSIDER</span></h3>
+<table class="kv">
+<tr><td>Source</td><td><code>K-Dense-AI/scientific-agent-skills</code> &middot; <code>skills/paper-lookup</code> @ <code>a25cf9ec00e2745d03f8704acf6f6919694ccd9a</code> (2026-11-02)</td></tr>
+<tr><td>Serves</td><td>Both tools; paper research for Sol, Vega and infoStacker. It covers 18 scholarly APIs: arXiv, OpenAlex, Semantic Scholar, Crossref, PubMed, Europe PMC, Unpaywall and others.</td></tr>
+<tr><td>Adoption</td><td>Repo 56k stars, pushed 2026-11-02. skills.sh audits: <b>Gen Pass, Socket Pass</b>, no Snyk scan.</td></tr>
+<tr><td>Read</td><td>SKILL.md and all 5 scripts line by line: <code>_common.py</code>, <code>paginate.py</code>, <code>arxiv_atom.py</code>, <code>openalex_abstract.py</code>, <code>jats_to_text.py</code>. Standard library only, bounded calls (at most 1,000 records or 50 calls without asking), rate-limited, API keys redacted from all printed URLs. It treats every API response as untrusted text and says so to the agent. The 18 API reference docs I scanned for installs, credential reads, agent-directed instructions and hidden Unicode, not line by line: nothing beyond API keys being optional.</td></tr>
+<tr><td>Trial</td><td>Codex: fired on <b>2 of 2</b> (topic search, DOI lookup). Claude Code on Opus at medium: 1 of 4 across both prompt variants; it fired on the DOI lookup only. In Claude you would mostly call it by name.</td></tr>
+<tr><td>Risks</td><td>
+<ul>
+<li><code>allowed-tools: Read Bash</code> pre-approves shell commands while the skill is active in Claude Code. The installer would strip that line, as it already rewrites frontmatter for explicit-only skills.</li>
+<li>It tells the agent to read <code>NCBI_API_KEY</code>, <code>S2_API_KEY</code>, <code>CORE_API_KEY</code> and <code>OPENALEX_API_KEY</code> from a <code>.env</code> in the working folder, and only those.</li>
+<li>Unpaywall needs a real email in the query string. That would be yours, sent to Unpaywall.</li>
+<li>It instructs the agent to add K-Dense's own paper (arXiv 2609.00065) to the references of any manuscript or code release it "materially contributed to", and to tell you. That is self-promotion inside your outputs. You'd want a line in AGENTS.md overriding it, or to delete that section at install.</li></ul></td></tr>
+<tr><td>Overlap</td><td>Context7 (item 9) is for library docs, not papers. WebSearch finds papers but has no provenance or pagination discipline.</td></tr>
+</table></div>
+
+<h2>What "did not fire" means</h2>
+<div class="card">
+<p>A skill sits in context only as its one-line description. The model decides by itself whether a request matches and then loads the full SKILL.md. Claude Code does that with the <code>Skill</code> tool; Codex has the model open <code>SKILL.md</code> with a file read. "Fired" means the transcript shows that call. "Did not fire" means the model answered without ever loading the skill, so the skill's instructions had no effect on that answer. You'd still pay for its description in every session.</p>
+<p>A skill that never fires is dead weight unless you call it by name (<code>/uv</code>), and then it might as well be explicit-only. That's why uv and frontend-design are rejected for Claude Code: uv fired on 1 of 4 prompts there, frontend-design on 0 of 4. Codex reaches for skills much more readily (table below), so "did not fire" is a statement about one tool and model, not about the skill. For uv the deciding point is that it adds nothing over AGENTS.md: Opus answered <code>uv add requests</code> correctly without it.</p>
+</div>
+
+<h2>Trigger trials (second pass)</h2>
+<div class="card wrap">
+<p>Each prompt ran once per tool in a scratch project, with all five candidate skills installed at project scope. Claude Code: Opus at medium, read-only tools, the <code>Skill</code> call detected in the stream. Codex: default model (GPT-6.1 Sol, medium), read-only sandbox, a read of <code>SKILL.md</code> detected in the JSON log (saved under <code>_scratch\addons-trial-2026-11-04\codex-logs</code>).</p>
+<table>
+<tr><th>Expected</th><th>Prompt</th><th>Claude (A)</th><th>Claude (B)</th><th>Codex (B)</th></tr>
+<tr><td>tdd</td><td>Add a slugify(text) function to utils.py. Let's do it test-first.</td><td class="keep">tdd</td><td>-</td><td class="keep">tdd</td></tr>
+<tr><td>tdd</td><td>Input validation for total() using red-green-refactor</td><td class="keep">tdd</td><td>-</td><td class="keep">tdd</td></tr>
+<tr><td>diagnosing-bugs</td><td>total() returns wrong sums for some lists. Debug this.</td><td class="keep">diagnosing-bugs</td><td>-</td><td class="keep">diagnosing-bugs</td></tr>
+<tr><td>diagnosing-bugs</td><td>Our test suite got much slower since last week. Figure out why.</td><td class="keep">diagnosing-bugs</td><td>-</td><td class="keep">diagnosing-bugs</td></tr>
+<tr><td>uv</td><td>Add the requests package as a dependency</td><td class="drop">none</td><td class="drop">none</td><td class="keep">uv</td></tr>
+<tr><td>uv</td><td>Run calc.py with httpx available, without touching pyproject</td><td class="drop">none</td><td class="keep">uv</td><td class="keep">uv</td></tr>
+<tr><td>frontend-design</td><td>Design a small landing page for a local volleyball club</td><td class="drop">none</td><td class="drop">none</td><td class="keep">frontend-design</td></tr>
+<tr><td>frontend-design</td><td>Build a pricing page... make it look distinctive</td><td class="drop">none</td><td class="drop">none</td><td class="drop">none</td></tr>
+<tr><td>paper-lookup</td><td>Find recent papers on how agent skill libraries affect coding agents</td><td class="drop">none</td><td class="drop">none</td><td class="keep">paper-lookup</td></tr>
+<tr><td>paper-lookup</td><td>Look up DOI 10.48550/arXiv.2602.11988</td><td class="drop">none</td><td class="keep">paper-lookup</td><td class="keep">paper-lookup</td></tr>
+<tr><td>none</td><td>What does git rebase --onto do?</td><td class="keep">none</td><td>-</td><td class="keep">none</td></tr>
+<tr><td>none</td><td>Rename the variable t to running_total in calc.py</td><td class="keep">none</td><td>-</td><td class="keep">none</td></tr>
+<tr><td>none</td><td>Write a haiku about Mondays</td><td class="keep">none</td><td>-</td><td class="keep">none</td></tr>
+</table>
+<p><b>A</b> = prompt plus "Plan only: do not edit files or run commands". <b>B</b> = prompt plus "Do not edit files". My first Codex run used suffix A and showed no skill at all. The logs explain it: Codex loads a skill by running <code>Get-Content .agents/skills/&lt;name&gt;/SKILL.md</code>, which "do not run commands" forbids. So I reran Codex with B, and reran Claude with B on the six prompts that hadn't fired.</p>
+<p><b>Reading:</b></p>
+<ul>
+<li>tdd and diagnosing-bugs fire reliably in both tools, and nothing fires on unrelated prompts.</li>
+<li>Codex reaches for skills far more eagerly (9 of 10) than Claude Code on Opus (6 of 10 at best).</li>
+<li>uv: in Codex it fires, but it repeats what AGENTS.md already says, so it stays rejected.</li>
+<li>frontend-design: 0 of 4 in Claude, 1 of 2 in Codex. It stays project-level.</li>
+<li>paper-lookup: 1 of 4 in Claude, 2 of 2 in Codex. As a "consider" it would mainly help Codex; in Claude you'd call <code>/paper-lookup</code> by name.</li>
+</ul>
+</div>
+
+<h2>Community signal, last 60 days (new)</h2>
+<div class="card">
+<ul>
+<li><b>Hacker News</b> (Algolia API, stories and comments since 2026-09-05):
+<ul>
+<li>A practitioner's Stop hook works where Markdown instructions get ignored after a few iterations (item 49613857). That supports item 4.</li>
+<li>Someone else wrote a PreToolUse hook that denies irreversible MCP actions (49844794). That supports items 1-2.</li>
+<li>The grilling skill is called better than plan mode (49948197).</li>
+<li>Superpowers' brainstorming has users (49856911), but Pi users object to "superpower:* skills, 10 background agents" (49929196).</li>
+<li>Matt Pocock's skills show up in two described team workflows (50364147, 49948336).</li>
+<li>The biggest skill story was "I-have-ADHD: A skill to stop coding agents from burying the answer" (542 points, 49610631). Your AGENTS.md already says "Lead with the result".</li>
+<li>One loud thread: "OpenAI seems to be silently re-enabling model training on Codex chats" (509 points, 2026-11-03, 50352757). That's worth a look in your Codex data settings; it's not an add-on question.</li></ul></li>
+<li><b>Reddit</b> (r/ClaudeAI, r/ClaudeCode, r/codex via the Arctic Shift archive; reddit.com itself refuses both the built-in browser and plain fetches):
+<ul>
+<li>"Am I stupid for not using any skills" (114 points, 61 comments): the consensus is that skills are saved prompts for things you repeat, and the one named skill is <code>/grill-me</code>.</li>
+<li>"I tried running the Cloudflare security-audit skill... Max plan 5-hour limit" (2026-11-01): commenters say audit skills that fan out into subagents burn quota, because subagents get a much shorter prompt cache. One says it took three 5-hour sessions even on Sonnet. That's why Cloudflare's skill is rejected below.</li>
+<li>"I counted how many times my hooks had to stop Claude in one week. 448 times in 76 sessions" (129 points).</li>
+<li>"What have you moved into hooks because CLAUDE.md is context, not enforced config" (26 comments).</li>
+<li>"Things I got wrong building on Claude Code hooks (including a deny that silently allowed everything)". My guard hook denies on unparsable input for that reason.</li>
+<li>Research workflow threads favour "quote the exact sentence and spot-check it" over any particular skill.</li>
+<li>r/codex "Top 10 fastest-growing Codex skill repos, October 2026" (238 points; skillleaderboard.com chart): mattpocock/skills is #1 (+35k stars). Then Ponytail, Impeccable, Anatomy, Diagram Design, Graphify, obra/superpowers, Taste Skill, Hallmark, Addy Osmani. Each one is evaluated above.</li>
+<li>r/ClaudeCode "I switched off every built-in Claude Code skill I never use" (41 points): the Claude API reference and Deep Research skills fire too often, the latter spawning a swarm of agents. That matches your usage-limit concern and is a separate cleanup you could do with <code>skillOverrides</code>.</li>
+<li>The most-upvoted hooks post of the period, "One Claude Code feature I was underusing: hooks" (r/ClaudeAI, 2026-09-07, 307 points): CLAUDE.md for what Claude must understand, hooks for what must happen every time. That's the same split as your research and items 1-4.</li>
+<li>"Postman's desktop app can install its plugin into Claude Code without asking" (r/ClaudeCode, 2026-11-04). It installs at user scope in Claude Code, Codex, Cursor and Copilot CLI, adding a startup hook, 17 skills and an MCP server. <b>Checked here: not installed</b>. <code>claude plugin list</code> is empty and Codex lists no Postman plugin. The plugin cache holds only inactive leftovers from your 2026-11-04 reset (frontend-design, mattpocock-skills, last30days). Lesson for agent-config: the weekly skills check could also flag user-scope plugins that <code>baseline.json</code> doesn't list. I'm noting that idea only, not proposing it here.</li>
+<li>Hook threads: "every rule in my CLAUDE.md that started with NEVER eventually became a hook". A commenter on another guard hook found that <code>--force</code> also matches <code>--force-with-lease</code> and that <code>git push origin +main</code> slips through. My guard blocks any <code>git push</code>, so both cases are covered.</li></ul></li>
+<li><b>X</b>: not read. x.com redirects to its login page in the built-in browser. If you sign in there, I can add it.</li>
+</ul></div>
+
+<h2>skills.sh trending and GitHub, last 60 days (new)</h2>
+<div class="card">
+<ul>
+<li><b>skills.sh trending (24 h), about 330 entries read.</b> Mattpocock skills are the most present engineering set (grill-me #80, tdd #118, 20+ entries). Superpowers is around #248-400.</li>
+<li><b>Warning:</b> six repos named <code>*/superpowers</code> that are not obra's (skills-shell, 101-skills, qu-skills, magentosh, bankai-skills, its-a-skill-issue) push AI-media and "python-executor"/"infsh-cli" skills high on the list. 101-skills/superpowers/python-executor is Socket Warn, Snyk Warn. Treat anything named "superpowers" that isn't <code>obra/superpowers</code> as a likely look-alike.</li>
+<li><b>Audits for 40 skills</b>, read from skills.sh. Failures and warnings worth knowing:
+<ul>
+<li>last30days: Gen <b>Fail</b>, Socket Warn, Snyk Warn.</li>
+<li>leonxlnx/taste-skill: Gen <b>Fail</b>.</li>
+<li>context-mode: Gen Warn.</li>
+<li>impeccable: Socket Warn.</li>
+<li>Snyk Warn: Superpowers brainstorming, find-skills, Cloudflare security-audit, Hallmark, EGM's egm-review, Microsoft playwright-cli.</li></ul>
+Every recommended item is Pass on all scans run.</li>
+<li><b>GitHub trending (monthly, weekly) and repos created since 2026-09-05</b>, by topic agent-skills, claude-code-skills, claude-code-plugin and codex-skills. The new and relevant ones are evaluated in the Later and Rejected tables: google/elephant-goldfish-model, Nutlope/hallmark, jakubkrehel/skills, pbakaus/impeccable, mksglu/context-mode, cloudflare/security-audit-skill, thedotmack/claude-mem, multica-ai/andrej-karpathy-skills.</li>
+</ul></div>
+
+<h2>Later</h2>
+<div class="card wrap"><table>
+<tr><th>#</th><th>Item</th><th>Why later</th></tr>
+<tr><td>12</td><td>jdtls-lsp (Anthropic)</td><td>Needs a manual Eclipse JDT.LS download and a <code>jdtls.cmd</code> wrapper on PATH (README covers macOS and Linux only). Startup takes up to 120 s. Worth it if the Java work grows past the practice project.</td></tr>
+<tr><td>13</td><td>typescript-lsp (Anthropic)</td><td>Same trial result as 10. You have no active TS project right now (vbgym is Python).</td></tr>
+<tr><td>14</td><td>google/elephant-goldfish-model (EGM) <b>(new)</b></td><td>Google, Apache-2.0, 11.6k stars in under two months, plugin for both Claude Code and Codex. Design specs drafted with context, then reviewed by zero-context subagents. All 7 skills are explicit-only, so they cost no listing budget. Audits: egm-brainstorm Pass/Pass/Pass, egm-review Pass/Pass/Snyk Warn. Its privacy doc says no telemetry or hosted service. But all 9 reviewer agents are <code>model: inherit</code>, so one review fans out on Opus, the pattern that hit your session limit. I read the manifest, agent frontmatter and privacy doc; I have not yet read the 235 KB of skills and agents line by line. A good fit for Sol, Vega and infoStacker design work, but only after a full read and one trial on a real spec.</td></tr>
+<tr><td>15</td><td>Vercel react-best-practices / web-design-guidelines</td><td>870K / 824K installs, Safe. Belong in a React project's own skills folder, not global. Revisit when you start one.</td></tr>
+<tr><td>17</td><td>DietrichGebert/ponytail <b>(new)</b></td><td>184k stars, #2 on r/codex's October "fastest-growing" chart, audits Pass/Pass/Pass. Your 2026-10-07 research cites JetBrains' controlled test: 15% less code and 10% lower cost, but <b>0% self-activation</b>. So it would only work explicit-only, or condensed into one AGENTS.md line ("prefer the smallest change; don't write code you can avoid"). Worth a trial; files not yet read.</td></tr>
+<tr><td>16</td><td>jakubkrehel/skills, Nutlope/hallmark <b>(new)</b></td><td>The two strongest new UI skill sets: 10.7k and 47.7k stars, trending this week. jakubkrehel audits are Pass/Pass/Pass; Hallmark is Snyk Warn. They belong in sol or vbgym next to the UI skills you already chose (ui-taste, HIG skills), not global. Revisit at your next UI round; that's also where the 3-5-design rounds happen.</td></tr>
+</table></div>
+
+<h2>Rejected</h2>
+<div class="card wrap"><table>
+<tr><th>Candidate</th><th>Reason</th></tr>
+<tr><td>Superpowers (obra)</td><td>Overlaps plan mode, /code-review and items 5-7. The brainstorming description opens "You MUST use this". Its brainstorm server loads a remote logo with a version parameter (a light phone-home, off via SUPERPOWERS_DISABLE_TELEMETRY).</td></tr>
+<tr><td>Matt Pocock full plugin</td><td>27 skills; code-review, handoff, research and pr duplicate built-ins. Cherry-picked instead (5-7). The plugin and npx copies duplicated each other last time.</td></tr>
+<tr><td>Astral uv / ruff / ty skills</td><td>First-party and clean (uv audits Pass/Pass/Pass). Fired on 1 of 4 in Claude Code on Opus and 2 of 2 in Codex. But it repeats what AGENTS.md already says ("Python projects use uv"), and Opus answered <code>uv add requests</code> correctly without it. The plugin's ty LSP runs <code>uvx ty@latest</code> (unpinned).</td></tr>
+<tr><td>frontend-design (Anthropic)</td><td>Audits Pass/Pass/Pass. Fired on 0 of 4 UI prompts in Claude Code on Opus (0 of 2 on Haiku) and 1 of 2 in Codex. The UI skills in sol and vbgym cover this at project level.</td></tr>
+<tr><td>K-Dense literature-review <b>(new)</b></td><td>Read in full. <code>allowed-tools: Read Write Edit Bash</code>. Its schematic scripts call OpenRouter (paid) and search every parent folder's <code>.env</code> for <code>OPENROUTER_API_KEY</code>, up to the drive root. Needs pandoc and XeLaTeX. Same self-citation instruction as paper-lookup. Built for biomedical systematic reviews (PRISMA), heavier than your research needs.</td></tr>
+<tr><td>Cloudflare security-audit <b>(new)</b></td><td>58k stars and trending, but it fans out into subagents. On Reddit it used up a Max plan's 5-hour limit in one run (2026-11-01). Snyk Warn. Built-in <code>/security-review</code> covers your scale.</td></tr>
+<tr><td>mksglu/context-mode <b>(new)</b></td><td>33k stars. Keeps tool output out of context via hooks, sandbox and SQL. Tempting for usage limits, but Gen Warn, and it rewrites every tool result through its own hooks. Too invasive to add without a dedicated trial.</td></tr>
+<tr><td>claude-mem, andrej-karpathy-skills <b>(new)</b></td><td>claude-mem duplicates auto-memory. The Karpathy file is a CLAUDE.md of general behaviour rules that would compete with your hand-written AGENTS.md, which your research says to keep short.</td></tr>
+<tr><td>leonxlnx/taste-skill, pbakaus/impeccable <b>(new)</b></td><td>taste-skill: Gen <b>Fail</b>. impeccable: Socket Warn; it overlaps the UI skills already in your projects.</td></tr>
+<tr><td>addyosmani/agent-skills <b>(new)</b></td><td>113k stars, but code-review, git-workflow and planning skills duplicate built-ins and the Matt Pocock picks. code-review-and-quality is Snyk Warn.</td></tr>
+<tr><td>Graphify, Understand-Anything <b>(new)</b></td><td>142k and 91k stars, both on r/codex's skill-repo charts. They turn a codebase into a knowledge graph. That's overkill for projects your size, and it overlaps code search and the LSP plugins.</td></tr>
+<tr><td>Any <code>*/superpowers</code> not by obra <b>(new)</b></td><td>Look-alike repos riding the name (see trending). Never install.</td></tr>
+<tr><td>find-skills</td><td>The weekly skills-check already does discovery. Snyk Med. Its method is in skills-check-prompt.md anyway.</td></tr>
+<tr><td>powershell-windows</td><td>From an aggregator repo (ag-kit). Both models now handle PS 5.1. Your shell rules already live in the tool prompts.</td></tr>
+<tr><td>security-guidance (Anthropic)</td><td>Sends an Opus diff review after every turn that changed files, which hits your usage limit. Needs Python on PATH (absent: <code>python</code> is the Store stub). Hooks run via bash.</td></tr>
+<tr><td>last30days</td><td>skills.sh CRITICAL, from the last round.</td></tr>
+<tr><td>Playwright MCP, Chrome DevTools MCP</td><td>Both tools have built-in browsers. 14-19k tokens of tool definitions.</td></tr>
+<tr><td>GitHub MCP</td><td><code>gh</code> CLI and Codex's GitHub plugin cover it. About 86 tools.</td></tr>
+<tr><td>Exa, Tavily, Perplexity</td><td>API keys, and WebSearch covers most of it.</td></tr>
+<tr><td>Serena</td><td>Overlaps the LSP plugins. Its own README says its file tools are usually disabled in Claude Code and Codex.</td></tr>
+<tr><td>Sequential-thinking, memory MCP</td><td>Superseded by adaptive thinking and auto-memory.</td></tr>
+<tr><td>dcg (destructive_command_guard)</td><td>6.2k stars and broad, but a Rust binary with 780 files to audit for three rules a 90-line script covers.</td></tr>
+<tr><td>cc-safety-net</td><td>Installed via <code>npx -y cc-safety-net@latest</code> (unpinned, auto-updating).</td></tr>
+<tr><td>hookify, commit-commands, code-review plugins</td><td>Built-ins or item 1 cover them. commit-commands includes push.</td></tr>
+<tr><td>Community Java LSP marketplaces (boostvolt, Piebald, zircote)</td><td>Third-party wrappers around the same jdtls. Piebald needs tweakcc patching. Use Anthropic's when ready (11).</td></tr>
+<tr><td>Figma, Microsoft Learn MCP</td><td>You don't work from Figma files or the Microsoft stack.</td></tr>
+</table></div>
+
+<h2>Codex second opinion</h2>
+<div class="card" id="codex">
+<p><code>codex exec --profile deep --sandbox read-only</code> (GPT-6 Astra, max) reviewed the shortlist and read both hook scripts. Its verdict: "Mostly agree, but fix both hooks before relying on them." It did a static review against current OpenAI docs and did not execute anything.</p>
+<table>
+<tr><th>Item</th><th>Codex</th><th>What I did</th></tr>
+<tr><td>1 git-guard (Claude)</td><td class="ask">Modify</td><td>It found bypasses: <code>git clean -fd -- -notes</code> and <code>-e -notes</code> read as dry runs, <code>bash -lc</code> not rescanned, <code>-EncodedCommand</code> not decoded, <code>git p"ush"</code> split wrongly. It also found a false positive on <code>echo git push</code> and that unparsable input was allowed. <b>All fixed</b>, with test cases added (45/45) and a live re-check.</td></tr>
+<tr><td>2 git-guard (Codex)</td><td class="ask">Modify</td><td>It agrees the <code>^Bash$</code> matcher is right. Input later sent to a running process (<code>write_stdin</code>) gets no new PreToolUse check, so an interactive shell session could type <code>git push</code> unchecked. Trust is tied to the hook's hash, so re-run <code>/hooks</code> after script updates. Both noted under item 2's risks.</td></tr>
+<tr><td>3 execpolicy</td><td class="keep">Agree</td><td>It adds that literal prefixes also miss <code>git.exe push</code> and <code>git reset HEAD --hard</code>. That is expected; the hook is the main layer.</td></tr>
+<tr><td>4 Stop runner</td><td class="ask">Modify</td><td>Stale cache: the fingerprint ignored HEAD and untracked contents. Also, <code>stop_hook_active</code> let the agent finish after one failure. <b>Both fixed</b>: the fingerprint now covers both, and the runner allows two blocks, then gives up. Commands run in cmd.exe, which is now documented. Git calls now have timeouts.</td></tr>
+<tr><td>5 tdd</td><td class="ask">Modify</td><td>Test triggering on Codex's model too; badges aren't proof. Partly done: diagnosing-bugs is confirmed in Codex, tdd is not.</td></tr>
+<tr><td>6 diagnosing-bugs</td><td class="ask">Modify</td><td>Check that the bash HITL template works on Windows. It needs Git Bash, which you have. Trial in Codex: fired correctly.</td></tr>
+<tr><td>7 grilling</td><td class="ask">Modify</td><td>Make both skills explicit-only, not just grill-me. <b>Adopted.</b></td></tr>
+<tr><td>9 Context7</td><td class="ask">Modify</td><td>Use an <code>enabled_tools</code> allowlist in Codex and treat retrieved text as untrusted. <b>Adopted.</b> It suggested project scope; I kept user scope because the server is useful in several projects. Your call.</td></tr>
+<tr><td>10 pyright-lsp</td><td class="ask">Modify</td><td>Pin the npm version. <b>Adopted</b> (<code>pyright@1.1.414</code>). Keep command-line type checks.</td></tr>
+<tr><td>8 spring-boot</td><td class="keep">Agree</td><td>Project scope and explicit-only, set in both tools' metadata.</td></tr>
+<tr><td>Rejections</td><td class="keep">Mostly agree</td><td>It warned that "did not fire on Claude" is weak evidence against a skill for Codex. Fair for Astral's uv skill, but AGENTS.md already says "Python projects use uv", which both tools read.</td></tr>
+</table>
+<p><b>Missing for Codex, per Codex:</b> (a) document sandbox and approval settings, and keep MCP and connector write permissions separate, because a shell git guard can't stop an API write. For example, Codex's GitHub plugin can push through the API. (b) Codex's skill budget is 2% of context; it shortens descriptions and may omit skills <i>with a warning</i>. That differs from Claude Code's 1%, which truncates silently. Both points are noted for the install step.</p>
+</div>
+
+<h2>What I could not check</h2>
+<div class="card">
+<p>Status of each gap from the first draft:</p>
+<ul>
+<li><b>skills.sh trending and audits</b>: <span class="keep">closed</span>. The 24-hour trending list (about 330 entries) and the audit verdicts of 40 skills are read. Context7, jdtls and pyright-lsp have no skills.sh page, because they are an MCP server and plugins, not skills; skills.sh audits only skills.</li>
+<li><b>Hacker News</b>: <span class="keep">closed</span>, via the Algolia API, stories and comments since 2026-09-05.</li>
+<li><b>Reddit</b>: <span class="keep">closed</span>. Read via the Arctic Shift archive, since reddit.com refuses the built-in browser and plain fetches. All 15 title queries (3 subreddits, 5 terms) and the comments of 9 key threads came through after rate-limit retries.</li>
+<li><b>X</b>: <span class="drop">open</span>. Needs your login in the browser pane.</li>
+<li><b>GitHub trending and new repos</b>: <span class="keep">closed</span>, monthly and weekly trending plus a topic search for repos created since 2026-09-05.</li>
+<li><b>Skill triggering</b>: <span class="ask">improved</span>. 13 prompts on Opus at medium and on Codex's default model, plus 6 reruns. One run each, so it shows tendency, not rates; run-to-run variance is not measured. Whether a fired skill actually <i>improved</i> the answer was judged only for uv (no gain).</li>
+<li><b>LSP diagnostics</b>: <span class="ask">mechanism known, delivery unconfirmed</span>. Diagnostics are produced and queued; I saw the interactive delivery check run but not a delivery, because I couldn't send a second message into that session.</li>
+<li><b>Codex hook trust</b>: <span class="ask">gate tested, trust step not</span>. Without trust, <code>codex exec</code> skips the hook silently. Running <code>/hooks</code> writes to your real <code>~/.codex</code>, so it's an install step for you or for me after approval.</li>
+<li><b>Spring Boot skill</b>: <span class="keep">closed</span>. All 20 files read by me.</li>
+<li><b>K-Dense</b>: <span class="ask">mostly closed</span>. Both SKILL.md files and all 10 scripts read in full; the 26 API reference docs scanned, not read line by line.</li>
+<li><b>EGM</b>: <span class="drop">open</span>. Not read in full; that's why it's "later".</li>
+</ul></div>
+
+<h2>Sources</h2>
+<div class="card"><ul>
+<li><a href="https://code.claude.com/docs/en/hooks">Claude Code hooks</a> &middot; <a href="https://learn.chatgpt.com/docs/hooks">Codex hooks</a> &middot; <a href="https://learn.chatgpt.com/docs/agent-configuration/rules">Codex rules</a> &middot; <a href="https://developers.openai.com/codex/mcp">Codex MCP</a></li>
+<li><a href="https://skills.sh">skills.sh</a> and <a href="https://skills.sh/audits">audits</a> &middot; <a href="https://github.com/anthropics/claude-plugins-official">claude-plugins-official</a> (local checkout of 2026-11-04) &middot; <a href="https://github.com/openai/plugins">openai/plugins</a></li>
+<li><a href="https://github.com/mattpocock/skills">mattpocock/skills</a> &middot; <a href="https://github.com/obra/superpowers">obra/superpowers</a> &middot; <a href="https://github.com/astral-sh/claude-code-plugins">astral-sh/claude-code-plugins</a> &middot; <a href="https://github.com/sivaprasadreddy/sivalabs-agent-skills">sivalabs-agent-skills</a> &middot; <a href="https://github.com/upstash/context7">upstash/context7</a></li>
+<li><a href="https://github.com/Dicklesworthstone/destructive_command_guard">dcg</a> &middot; <a href="https://github.com/kenryu42/claude-code-safety-net">cc-safety-net</a></li>
+<li>Earlier research: <code>docs/research.md</code>, vega <code>community-skills.md</code> and <code>community-scams-malware.md</code>, sol <code>self-extension.md</code></li>
+<li>Trial files: <code>Code\_scratch\addons-trial-2026-11-04</code> (hooks, test cases, shortlist, Codex prompt and answer)</li>
+</ul></div>
+</main>

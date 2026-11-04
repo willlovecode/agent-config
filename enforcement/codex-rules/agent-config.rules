@@ -1,0 +1,4 @@
+# agent-config: installed to ~/.codex/rules/agent-config.rules. Needs no hook trust.
+# Literal prefixes only (git -C dir push is not matched); the git-guard hook is the main layer.
+prefix_rule(pattern = ["git", "push"], decision = "forbidden", justification = "agent-config: agents never push; ask the user.", match = ["git push", "git push origin main"], not_match = ["git pull"])
+prefix_rule(pattern = ["git", "reset", "--hard"], decision = "forbidden", justification = "agent-config: use git stash or git reset --soft.", match = ["git reset --hard HEAD~1"], not_match = ["git reset HEAD~1"])

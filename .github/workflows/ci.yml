@@ -1,0 +1,30 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Context budget per profile
+        run: node checks/budget.mjs
+      - name: Hook tests
+        run: node checks/test-hooks.mjs
+      - name: Skill validation
+        run: node checks/validate-skills.mjs
+      - name: Installer dry run (fake home, both profiles)
+        shell: powershell
+        run: |
+          foreach ($p in "home", "work") {
+            $fake = Join-Path $env:RUNNER_TEMP "home-$p"
+            New-Item -ItemType Directory -Force $fake | Out-Null
+            $env:USERPROFILE = $fake
+            & .\install.ps1 -Profile $p
+            if (-not $?) { exit 1 }
+          }
+      - name: Build work kit
+        shell: powershell
+        run: .\bootstrap\build-work-kit.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-kit-work
+          path: dist/agent-kit-work.zip

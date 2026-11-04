@@ -1,8 +1,14 @@
 {
-  "reading": "Empty on purpose since 2026-11-04: full add-on reset (skills, hooks, plugins) in Claude Code and Codex before researching the best setup. Previous baseline and its audit notes: git history of this file and Code/_archive/addons-reset-2026-11-04.",
-  "plugins": {
-    "claude": [],
-    "codex": []
-  },
-  "skills": []
+  "reading": "Vendored skills, approved 2026-11-04 (reports/addons-research-2026-11-04.html, design docs/portable-toolkit-design.md). Each skill is copied into packs/<pack>/skills/<name> at the pinned commit; install.ps1 installs from the repo copy, never from the network. skills-check compares the pins with upstream.",
+  "plugins": { "claude": [], "codex": [] },
+  "skills": [
+    { "name": "tdd", "pack": "core", "repo": "mattpocock/skills", "path": "skills/engineering/tdd", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": ["claude", "codex"], "explicit_only": false, "why": "Test-first loop; fired on 2/2 prompts in both tools, 0/3 negatives. Audits Pass/Pass/Pass." },
+    { "name": "diagnosing-bugs", "pack": "core", "repo": "mattpocock/skills", "path": "skills/engineering/diagnosing-bugs", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": ["claude", "codex"], "explicit_only": false, "why": "Feedback-loop-first debugging; fired on 2/2 in both tools. Audits Pass/Pass/Pass." },
+    { "name": "grilling", "pack": "core", "repo": "mattpocock/skills", "path": "skills/productivity/grilling", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": ["claude", "codex"], "explicit_only": true, "why": "Design interview in rounds. Explicit-only so it never starts subagents uninvited." },
+    { "name": "grill-me", "pack": "core", "repo": "mattpocock/skills", "path": "skills/productivity/grill-me", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": ["claude", "codex"], "explicit_only": true, "why": "Alias that calls grilling; /grill-me." }
+  ]
 }

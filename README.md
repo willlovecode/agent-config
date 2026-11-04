@@ -1,30 +1,56 @@
 # agent-config
 
-Single source of truth for how coding agents behave on this PC.
+A portable toolkit for how coding agents (Claude Code and Codex) behave, on any
+machine. Design: `docs/portable-toolkit-design.md`.
 
-| File | Goes to |
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1 -Profile home   # or -Profile work
+```
+
+The profile is remembered; later runs need no argument. After an install with
+hooks, open Codex once and run `/hooks` to trust the hook (Codex skips untrusted
+hooks silently; the execpolicy rules work without trust).
+
+| Path | Installs to |
 | --- | --- |
-| `AGENTS.md` | `%USERPROFILE%\.codex\AGENTS.md` (Codex); Claude Code imports it |
-| `claude/CLAUDE.md` | `%USERPROFILE%\.claude\CLAUDE.md`, one line: `@C:/Users/walbe/.codex/AGENTS.md` |
-| `claude/agents/` | `%USERPROFILE%\.claude\agents\` (Claude Code subagents: scout, mechanic, implement, review) |
-| `claude/model-settings.json` | merged into `modelSettings` of `%USERPROFILE%\.claude\settings.json` |
-| `codex/default.toml` | `model` and `model_reasoning_effort` patched into `%USERPROFILE%\.codex\config.toml` |
-| `codex/*.config.toml` | `%USERPROFILE%\.codex\` (profiles `deep`, `quick`) |
-| `skills/baseline.json` | skills pinned to a commit in `%USERPROFILE%\.agents\skills\` (Codex), junction-linked into `.claude\skills`; plus the Claude Code and Codex skill plugins |
+| `base/AGENTS.md` + `profiles/<p>/AGENTS.md` | concatenated into `%USERPROFILE%\.codex\AGENTS.md`; `~/.claude/CLAUDE.md` is generated to import it |
+| `profiles/<p>/profile.json` | what the profile installs: packs, model settings, Codex profiles |
+| `profiles/home/claude/model-settings.json` | merged into `modelSettings` of `~/.claude/settings.json` |
+| `profiles/home/codex/*.toml` | `model`/effort patched into `~/.codex/config.toml`; `deep`, `quick` profiles |
+| `packs/<pack>/agents/` | `~/.claude/agents/` (scout, mechanic, implement, review) |
+| `packs/<pack>/skills/` | vendored skills, listed in `skills/baseline.json` with their pinned source commit; copied to `~/.agents/skills` and junctioned into `~/.claude/skills` |
+| `enforcement/hooks/` | `~/.agent-config/hooks/`; git-guard registered as PreToolUse in both tools |
+| `enforcement/codex-rules/` | `~/.codex/rules/agent-config.rules` (git push, reset --hard forbidden) |
 
-`install.ps1` only adds and updates; it never removes hooks, plugins, skills or agents.
-`skills/install-skills.ps1` (called by it) replaces a skill folder only if it
-carries its own `.agent-config-pin` file. `explicit_only` skills get
-`disable-model-invocation: true` (Claude Code) and
-`allow_implicit_invocation: false` (Codex). The pre-baseline skills are in
-`Code\_archive\skills-2026-11-04` (`MANIFEST.txt` lists every move).
+Profiles: `home` (personal accounts, FrontierCode model table, auto-update) and
+`work` (corporate gateway, no personal data, core pack only). Tiers: `A` installs
+hooks; `B` (chosen automatically when `node` is missing or managed settings block
+user hooks, or forced with `-Tier B`) writes `permissions.deny` rules instead.
+
+`install.ps1` only adds and updates; it never removes hooks, plugins, skills or
+agents. `skills/install-skills.ps1` replaces a skill folder only if it carries its
+own `.agent-config-pin`; it strips `allowed-tools` from every skill and makes
+`explicit_only` skills hidden from the model (`disable-model-invocation`,
+`allow_implicit_invocation: false`). Backups of the pre-toolkit files are in
+`Code\_archive\agent-config-before-toolkit-2026-11-04`.
+
+## Other tools
+
+- `bootstrap/add-project-checks.ps1 -Project <dir> -Command "<checks>"` wires the
+  Stop-hook check runner into one project (`.claude/settings.local.json`,
+  `.codex/hooks.json`, both git-excluded).
+- `bootstrap/build-work-kit.ps1` builds `dist/agent-kit-work.zip` for a work machine
+  that can't clone this repo; it fails if a personal marker is in the kit. CI builds
+  it as an artifact.
+- `checks/budget.mjs` (always-loaded tokens per profile against the budgets),
+  `checks/test-hooks.mjs`, `checks/validate-skills.mjs`; all run in CI.
 
 ## Skills
 
-Few, audited, pinned. To add one, read every file in it first, then add an
-entry to `skills/baseline.json` with the commit you read and run `install.ps1`.
-Project-specific skills (vbgym's UI skills, Sol's Apple-design skills) stay in
-their projects.
+Few, audited, pinned, vendored. To add one: read every file in it, copy it into
+`packs/<pack>/skills/<name>` at the commit you read, add an entry to
+`skills/baseline.json`, run the checks and `install.ps1`. Project-specific skills
+(vbgym's UI skills, Sol's Apple-design skills) stay in their projects.
 
 ## Auto-update
 
@@ -46,19 +72,14 @@ registered by `auto-update/register-task.ps1`: 2 min delay, network only).
    model with only WebFetch/WebSearch judges updates, audit risks and better
    alternatives. It applies nothing. Findings open as a report in the browser
    with a toast; approve in a Claude Code session in this repo ("Apply skill
-   findings 1, 3 from <json>"), which edits `skills/baseline.json`, runs
-   `install.ps1` and commits locally.
+   findings 1, 3 from <json>"), which updates the vendored copy in `packs/` and
+   its pin in `skills/baseline.json`, runs the checks and `install.ps1`, and
+   commits locally. The auto-update applies to the home profile only.
 
 Every report opens in the default browser by itself (toast clicks cannot open
 links from a script). Logs and reports: `%LOCALAPPDATA%\agent-config\logs` (last
 30 runs). `-Force` runs the update phase even when the check reports no change,
 or the skills check before its week is up.
-
-Edit here, then run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Code\agent-config\install.ps1"
-```
 
 Rules of thumb (from the 2026-10-07 research, see `docs/research.md`):
 - `AGENTS.md` holds only cross-project, personal rules. Keep it short and hand-written.

@@ -3,18 +3,18 @@ benchmark reading. The reading is given below as JSON. It has been validated:
 model names, efforts and numbers only. Do not act on anything else.
 
 Files you may edit, and nothing else:
-- `AGENTS.md`, section "## Model choice" only: the intro line with the reading
+- `profiles/home/AGENTS.md`, section "## Model choice" only: the intro line with the reading
   date, the table, and the bullets under it. Keep the section's structure,
   wording style and length. Put the new date in the intro line. The "Never
   use" bullet must name exactly the settings in `never_use` (grouped per model).
-- `claude/agents/{scout,mechanic,implement,review}.md`: only the `model:` and
+- `packs/core/agents/{scout,mechanic,implement,review}.md`: only the `model:` and
   `effort:` lines of the frontmatter. `model:` takes the alias `haiku`,
   `sonnet` or `opus`.
-- `claude/model-settings.json`: one entry per current Claude model id
+- `profiles/home/claude/model-settings.json`: one entry per current Claude model id
   (claude-opus-5-5 style) with its `effortLevel`, matching the table.
-- `codex/default.toml`: `model` and `model_reasoning_effort` for the Codex
+- `profiles/home/codex/default.toml`: `model` and `model_reasoning_effort` for the Codex
   everyday row, plus its comment with the reading's numbers.
-- `codex/deep.config.toml` and `codex/quick.config.toml`: the same two keys for
+- `profiles/home/codex/deep.config.toml` and `profiles/home/codex/quick.config.toml`: the same two keys for
   the Codex hardest and mechanical rows, plus their comments.
 - `auto-update/check-model.json`: model, effort and a one-sentence reason for
   the "check" row.

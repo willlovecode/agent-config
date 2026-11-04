@@ -1,0 +1,7 @@
+{
+  "description": "Home desktop: personal accounts, FrontierCode model table, auto-update on.",
+  "packs": ["core"],
+  "claudeModelSettings": "claude/model-settings.json",
+  "codexDefaults": "codex/default.toml",
+  "codexProfiles": ["codex/deep.config.toml", "codex/quick.config.toml"]
+}

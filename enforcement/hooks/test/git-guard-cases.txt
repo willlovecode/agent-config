@@ -1,0 +1,45 @@
+D|git push
+D|git push origin main
+D|git -C ../repo push
+D|git -c core.x=1 push --force
+D|cd x && git push
+D|git status; git push
+D|git reset --hard HEAD~1
+D|git reset HEAD~1 --hard
+D|git clean -fd
+D|git clean -fdx
+D|/usr/bin/git push
+D|& "C:\Program Files\Git\cmd\git.exe" push
+D|& git push
+D|sh -c "git push"
+D|bash -c 'git reset --hard'
+D|powershell -Command "git clean -fd"
+D|cmd /c "git push"
+D|git --no-pager push
+D|git.exe push
+A|git status
+A|git pull
+A|git commit -m "never git push here"
+A|git reset HEAD~1
+A|git reset --soft HEAD~1
+A|git clean -n
+A|git clean --dry-run
+A|git clean -nd
+A|echo "git push"
+A|git log --oneline | head
+A|git stash
+A|npm run push
+A|gh pr create
+A|git push-docs
+D|git clean -fd -- -notes
+D|git clean -fd -e -notes
+D|git clean -enotes -fd
+D|bash -lc 'git push'
+D|powershell -EncodedCommand ZwBpAHQAIABwAHUAcwBoAA==
+D|git p"ush"
+D|sudo git push
+D|env GIT_TRACE=1 git push
+A|git clean -n -- -notes
+A|echo git push
+A|Write-Host git push
+A|grep -r "git push" docs

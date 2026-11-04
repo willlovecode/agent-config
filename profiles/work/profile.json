@@ -1,0 +1,4 @@
+{
+  "description": "Work machine: corporate LLM gateway, no personal data, no third-party MCP, no auto-update.",
+  "packs": ["core"]
+}

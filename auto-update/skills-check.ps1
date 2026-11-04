@@ -57,7 +57,7 @@ try {
     "`n`n## Installed Claude Code plugins`n$plugins`n`n## Local skills not in the baseline`n" + $(if ($unmanaged) { $unmanaged -join "`n" } else { "(none)" }) + "`n"
 
   # Judgement, not number-reading: the model the table assigns to the implement agent.
-  $impl = Get-Content (Join-Path $repo "claude\agents\implement.md") -Raw
+  $impl = Get-Content (Join-Path $repo "packs\core\agents\implement.md") -Raw
   $model  = [regex]::Match($impl, '(?m)^model:\s*(\S+)').Groups[1].Value
   $effort = [regex]::Match($impl, '(?m)^effort:\s*(\S+)').Groups[1].Value
   $res = Invoke-Claude $prompt (Join-Path $here "skills-check.schema.json") $model $effort "WebFetch,WebSearch" @("--allowedTools", "WebFetch,WebSearch")

@@ -14,9 +14,9 @@ Get-ChildItem $logDir -Filter run-*.log | Sort-Object Name -Descending | Select-
 $OutputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 
 # Files the update phase may change; anything else it touches is rolled back.
-$allowed = @("AGENTS.md", "claude/agents/scout.md", "claude/agents/mechanic.md",
-  "claude/agents/implement.md", "claude/agents/review.md", "claude/model-settings.json",
-  "codex/default.toml", "codex/deep.config.toml", "codex/quick.config.toml",
+$allowed = @("profiles/home/AGENTS.md", "packs/core/agents/scout.md", "packs/core/agents/mechanic.md",
+  "packs/core/agents/implement.md", "packs/core/agents/review.md", "profiles/home/claude/model-settings.json",
+  "profiles/home/codex/default.toml", "profiles/home/codex/deep.config.toml", "profiles/home/codex/quick.config.toml",
   "auto-update/check-model.json")
 
 . (Join-Path $here "common.ps1")
@@ -42,8 +42,8 @@ try {
     $fc = "model | effort | new_score | cost per task`n" + ($rows -join "`n")
   } catch { $fc = "FETCH FAILED: $_"; Log "data.json fetch failed: $_" }
 
-  $agents = Get-Content (Join-Path $repo "AGENTS.md") -Raw
-  $section = [regex]::Match($agents, '(?s)## Model choice.*?(?=\r?\n## )').Value
+  $agents = Get-Content (Join-Path $repo "profiles\home\AGENTS.md") -Raw
+  $section = [regex]::Match($agents, '(?s)## Model choice.*?(?=\r?\n## |\z)').Value
   $prompt = (Get-Content (Join-Path $here "check-prompt.md") -Raw) +
     "`n`nToday is $today.`n`n## Current config: AGENTS.md`n$section`n`n## Current check model`n" +
     (Get-Content (Join-Path $here "check-model.json") -Raw) +
@@ -61,7 +61,7 @@ try {
   $dirty = (& git -C $repo status --porcelain --untracked-files=no) | Where-Object { $_ }
   if ($dirty) { throw "repo has uncommitted changes to tracked files; not updating:`n$($dirty -join "`n")" }
 
-  $impl = Get-Content (Join-Path $repo "claude\agents\implement.md") -Raw
+  $impl = Get-Content (Join-Path $repo "packs\core\agents\implement.md") -Raw
   $umodel  = [regex]::Match($impl, '(?m)^model:\s*(\S+)').Groups[1].Value
   $ueffort = [regex]::Match($impl, '(?m)^effort:\s*(\S+)').Groups[1].Value
   if (-not $umodel) { $umodel = "sonnet" }; if (-not $ueffort) { $ueffort = "high" }
