@@ -1,31 +1,8 @@
 {
-  "reading": "Skills baseline approved 2026-11-04 (reports/skills-baseline-2026-11-04.html, all items yes).",
+  "reading": "Empty on purpose since 2026-11-04: full add-on reset (skills, hooks, plugins) in Claude Code and Codex before researching the best setup. Previous baseline and its audit notes: git history of this file and Code/_archive/addons-reset-2026-11-04.",
   "plugins": {
-    "claude": [
-      { "id": "mattpocock-skills@claude-plugins-official", "marketplace": "anthropics/claude-plugins-official", "why": "Matt Pocock's engineering and productivity skills; the plugin auto-updates. Never also install the npx copies." },
-      { "id": "frontend-design@claude-plugins-official", "marketplace": "anthropics/claude-plugins-official", "why": "Official Anthropic frontend design guidance." },
-      { "id": "last30days@last30days-skill", "marketplace": "mvanhorn/last30days-skill", "why": "Community research across Reddit, X, HN and others; you use it for research." }
-    ],
-    "codex": [
-      { "id": "mattpocock-skills@mattpocock", "marketplace": "https://github.com/mattpocock/skills.git", "why": "Same Matt Pocock set for Codex." }
-    ]
+    "claude": [],
+    "codex": []
   },
-  "skills": [
-    { "name": "find-skills", "repo": "vercel-labs/skills", "path": "skills/find-skills", "commit": "9197d919034d19010ae303cf96bf19ad087dd4be",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Discovery of new skills; #1 on skills.sh. Its own rule: offer installs, never install unasked." },
-    { "name": "powershell-windows", "repo": "vudovn/ag-kit", "path": ".agents/skills/powershell-windows", "commit": "549ba3dc2eb1d40fccb5b6d792eba4101c80cd69",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "PowerShell 5.1 pitfalls on this PC; one Markdown file, no scripts." },
-    { "name": "brainstorming", "repo": "obra/superpowers", "path": "skills/brainstorming", "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
-      "tools": ["claude", "codex"], "explicit_only": true, "why": "Design dialogue before building. Explicit-only: its \"You MUST use this\" description over-triggers." },
-    { "name": "literature-review", "repo": "K-Dense-AI/scientific-agent-skills", "path": "skills/literature-review", "commit": "a25cf9ec00e2745d03f8704acf6f6919694ccd9a",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Systematic literature reviews." },
-    { "name": "paper-lookup", "repo": "K-Dense-AI/scientific-agent-skills", "path": "skills/paper-lookup", "commit": "a25cf9ec00e2745d03f8704acf6f6919694ccd9a",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Scholarly API search (arXiv, OpenAlex, Crossref and others)." },
-    { "name": "pubmed-database", "repo": "google-deepmind/science-skills", "path": "skills/pubmed_database", "commit": "4de6786171f1479026da5d3a00f110703c8ba35e",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "PubMed search and full text." },
-    { "name": "maintaining-windows-health", "repo": "CodeAlive-AI/ai-driven-development", "path": "skills/maintaining-windows-health", "commit": "c132e49b3c03b09a99fdc674486b1b1e9312f43c",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Disk cleanup and health alerting. Audited 2026-11-04: local-only server, validated deletes, installer is opt-in." },
-    { "name": "last30days", "repo": "mvanhorn/last30days-skill", "path": "skills/last30days", "commit": "e9c31b868ab9d284c1a988e528c3391c51ebf944",
-      "tools": ["codex"], "explicit_only": false, "why": "Codex copy; Claude Code gets it from the plugin." }
-  ]
+  "skills": []
 }
