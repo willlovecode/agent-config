@@ -127,7 +127,46 @@ if ($Tier -eq "A") {
 }
 Write-Json $sp $s
 
+"Tools"
+foreach ($m in @($prof.mcp)) {
+  if (-not $m) { continue }
+  # Claude Code: user-scope HTTP server (tools are deferred until used).
+  if (Get-Command claude -ErrorAction SilentlyContinue) {
+    cmd /c "claude mcp get $($m.name) >nul 2>nul"
+    if ($LASTEXITCODE -ne 0) { cmd /c "claude mcp add --scope user --transport http $($m.name) $($m.url) 2>&1" | Out-Null; "  Claude Code MCP: added $($m.name)" }
+    else { "  Claude Code MCP: ok $($m.name)" }
+  }
+  # Codex: a [mcp_servers.<name>] table with an allowlist of tools.
+  $ct = Join-Path $codex "config.toml"
+  $toml = if (Test-Path $ct) { [IO.File]::ReadAllText($ct) } else { "" }
+  if ($toml -notmatch "(?m)^\[mcp_servers\.$([regex]::Escape($m.name))\]") {
+    $tools = ($m.codexEnabledTools | ForEach-Object { "`"$_`"" }) -join ", "
+    $nl = if ($toml -match "`r`n") { "`r`n" } else { "`n" }
+    [IO.File]::AppendAllText($ct, "$nl[mcp_servers.$($m.name)]${nl}url = `"$($m.url)`"${nl}enabled_tools = [$tools]$nl", $utf8)
+    "  Codex MCP: added $($m.name)"
+  } else { "  Codex MCP: ok $($m.name)" }
+}
+foreach ($pkg in @($prof.npmGlobal)) {
+  if (-not $pkg -or -not (Get-Command npm -ErrorAction SilentlyContinue)) { continue }
+  $name, $ver = $pkg -split "@(?=[^@]+$)"
+  $have = (cmd /c "npm ls -g --depth=0 $name 2>nul") -join "`n"
+  if ($have -match [regex]::Escape("$name@$ver")) { "  npm: ok $pkg" }
+  else { cmd /c "npm install -g $pkg --no-fund --no-audit 2>&1" | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm install -g $pkg failed" }; "  npm: installed $pkg" }
+}
+foreach ($p in @($prof.claudePlugins)) {
+  if (-not $p -or -not (Get-Command claude -ErrorAction SilentlyContinue)) { continue }
+  $mk = $p.id.Split("@")[1]
+  if (((cmd /c "claude plugin marketplace list 2>&1") -join "`n") -notmatch [regex]::Escape($mk)) { cmd /c "claude plugin marketplace add $($p.marketplace) 2>&1" | Out-Null }
+  if (((cmd /c "claude plugin list 2>&1") -join "`n") -match [regex]::Escape($p.id)) { "  Claude plugin: ok $($p.id)" }
+  else { cmd /c "claude plugin install $($p.id) 2>&1" | Out-Null; if ($LASTEXITCODE -ne 0) { throw "claude plugin install $($p.id) failed" }; "  Claude plugin: installed $($p.id)" }
+}
+
 & (Join-Path $repo "skills\install-skills.ps1") -Packs $prof.packs
+foreach ($ps in @($prof.projectSkills)) {
+  if (-not $ps) { continue }
+  if (Test-Path $ps.project) { & (Join-Path $repo "skills\install-skills.ps1") -Project $ps.project -Names $ps.skills }
+  else { "Project skills: $($ps.project) not found, skipped" }
+}
 
 [IO.File]::WriteAllText($profileFile, $Profile, $utf8)
 "Done ($Profile, tier $Tier). Start new Codex and Claude Code sessions to pick up the changes."

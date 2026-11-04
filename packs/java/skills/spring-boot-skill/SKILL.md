@@ -1,0 +1,90 @@
+---
+name: spring-boot-skill
+description: >
+  Build Spring Boot 4.x applications following the best practices. 
+  Use this skill:
+    * When developing Spring Boot applications using Spring MVC, Spring Data JPA, Spring Modulith, Spring Security
+    * To create recommended Spring Boot package structure
+    * To implement REST APIs, entities/repositories, service layer, modular monoliths
+    * To use Thymeleaf view templates for building web applications
+    * To write tests for REST APIs and Web applications
+    * To write ArchUnit tests for testing architecture
+    * To configure the recommended plugins and configurations to improve code quality, and testing while using Maven.
+    * To use Spring Boot's Docker Compose support for local development
+    * To create Taskfile for easier execution of common tasks while working with a Spring Boot application
+---
+
+# Spring Boot Skill
+
+Apply the practices below when developing Spring Boot applications. Read the linked reference only when working on that area.
+
+## Maven pom.xml Configuration
+
+Read [references/spring-boot-maven-config.md](references/spring-boot-maven-config.md) for Maven `pom.xml` configuration with supporting plugins and configurations to improve code quality, and testing.
+
+## Package structure
+
+Read [references/code-organization.md](references/code-organization.md) for domain-driven, module-based package layout and naming conventions.
+
+## Spring Data JPA
+
+Implement the repository and entity layer using [references/spring-data-jpa.md](references/spring-data-jpa.md).
+
+## Service layer
+
+Implement business logic in the service layer using [references/spring-service-layer.md](references/spring-service-layer.md).
+
+## Spring MVC REST APIs
+
+Implement REST APIs with Spring MVC using [references/spring-webmvc-rest-api.md](references/spring-webmvc-rest-api.md).
+
+## Spring Modulith
+
+Build a modular monolith with Spring Modulith using [references/spring-modulith.md](references/spring-modulith.md).
+
+## Thymeleaf
+
+If Thymeleaf is used for view templates, refer [references/thymeleaf.md](references/thymeleaf.md)
+
+## Testing
+
+Write tests at complementary levels — unit, sliced Spring tests, and at least one end-to-end/smoke test; the levels are not either/or. Most framework-touching tests belong at the fast **sliced** level (`@SpringBootTest(classes = …)` or a slice annotation); keep full-context `@SpringBootTest` for a smoke test plus a request-level end-to-end. For why the levels are complementary and how to keep a large suite fast (context caching, one container for the suite), read [references/testing-strategy.md](references/testing-strategy.md).
+
+| What you're testing                                                                        | Level                                                   | Reference                                                                                                       |
+|--------------------------------------------------------------------------------------------|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Business/domain logic, no framework                                                        | Unit (no Spring context)                                | [testing-unit-mocking.md](references/testing-unit-mocking.md)                                                   |
+| JPA / JDBC / JdbcClient / Spring Data JDBC / jOOQ queries                                  | Persistence slice + Testcontainers                      | [testing-slices-persistence.md](references/testing-slices-persistence.md)                                       |
+| Controller, JSON serialization, or a REST client                                           | Web slice (`@WebMvcTest`/`@JsonTest`/`@RestClientTest`) | [testing-slices-web.md](references/testing-slices-web.md)                                                       |
+| A few components together, external HTTP (WireMock), or a startup/request-level smoke test | Sliced `@SpringBootTest(classes = …)` or smoke test     | [testing-integration.md](references/testing-integration.md)                                                     |
+| Full REST API over a real port, full `BaseIT` suite (`RestTestClient`)                     | End-to-end                                              | [spring-boot-rest-api-testing.md](references/spring-boot-rest-api-testing.md)                                   |
+| A view-rendering controller (`MockMvcTester`)                                              | Web slice                                               | [spring-boot-webapp-testing-with-mockmvctester.md](references/spring-boot-webapp-testing-with-mockmvctester.md) |
+| Wiring a container (`@ServiceConnection` / dynamic properties)                             | —                                                       | [testcontainers-wiring.md](references/testcontainers-wiring.md)                                                 |
+
+All persistence and integration tests use **Testcontainers with a real database** (never in-memory H2); see [references/testcontainers-wiring.md](references/testcontainers-wiring.md) for `@ServiceConnection` vs dynamic-property wiring.
+
+### Test Data Setup
+
+Prefer SQL fixtures with `@Sql("classpath:/test-data.sql")` before every test method. 
+When setting up data programmatically, prefer exposed Services or ModuleAPI classes over Repositories, `JdbcTemplate`, or `JdbcClient`. 
+Unless absolutely necessary, avoid using `JdbcTemplate`, `JdbcClient`, or `TransactionTemplate` 
+to execute SQL for test data setup, which couples tests to internal implementation details. 
+Read [references/test-data-setup.md](references/test-data-setup.md) when creating or changing test fixtures.
+
+### Write ArchUnit Tests
+To write tests for testing the architecture using ArchUnit, refer [references/archunit.md](references/archunit.md)
+
+### Spring Boot Docker Compose Support
+To use Docker Compose support for local development, refer [references/spring-boot-docker-compose.md](references/spring-boot-docker-compose.md).
+
+## Taskfile
+
+Use [references/taskfile.md](references/taskfile.md) for easier commands execution.
+
+## Known issues in this copy (agent-config, 2026-11-04)
+
+Check these before copying an example; the project's own code and build win.
+- Testcontainers 2.x (Boot 4): use the non-generic `org.testcontainers.postgresql.PostgreSQLContainer`. The `PostgreSQLContainer<?>` form in testing-integration, testcontainers-wiring and testing-slices-persistence is the 1.x API.
+- `thymeleaf-extras-springsecurity6` may be the wrong artifact for Spring Security 7; check the Boot BOM.
+- testing-strategy (about 95% sliced tests) and testing-unit-mocking ("most tests here") disagree; follow the project's existing balance.
+- The service-layer example calls a `UserEntity.create(...)` signature the entity example does not have; `dev.sivalabs.onepoint` imports belong to another project.
+- Defaults such as Spring Modulith, Taikai, a jacoco 80% gate, TSID ids, Taskfile and `hikari.auto-commit=false` are opinions, not requirements; propose them, don't add them unasked.

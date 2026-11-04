@@ -1,6 +1,16 @@
 {
   "description": "Home desktop: personal accounts, FrontierCode model table, auto-update on.",
-  "packs": ["core"],
+  "packs": ["core", "research"],
+  "projectSkills": [
+    { "project": "C:\\Users\\walbe\\Code\\energy-billing", "skills": ["spring-boot-skill"] }
+  ],
+  "mcp": [
+    { "name": "context7", "url": "https://mcp.context7.com/mcp", "codexEnabledTools": ["resolve-library-id", "query-docs"] }
+  ],
+  "npmGlobal": ["pyright@1.1.414"],
+  "claudePlugins": [
+    { "id": "pyright-lsp@claude-plugins-official", "marketplace": "anthropics/claude-plugins-official" }
+  ],
   "claudeModelSettings": "claude/model-settings.json",
   "codexDefaults": "codex/default.toml",
   "codexProfiles": ["codex/deep.config.toml", "codex/quick.config.toml"]

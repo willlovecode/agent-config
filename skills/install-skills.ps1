@@ -3,13 +3,16 @@
 # Adds and updates only: skills not in the baseline are left alone.
 # Shared skills live in ~/.agents/skills (Codex reads it); Claude Code gets a
 # junction per skill. Claude-only skills live in ~/.claude/skills directly.
-param([string[]]$Packs = @("core"))
+# With -Project, installs the named project-scoped skills into that project instead
+# (<project>/.agents/skills, junctioned into <project>/.claude/skills, both git-excluded).
+param([string[]]$Packs = @("core"), [string]$Project, [string[]]$Names)
 $ErrorActionPreference = "Stop"
 $u      = $env:USERPROFILE
 $repo   = Split-Path $PSScriptRoot
 $base   = Get-Content (Join-Path $PSScriptRoot "baseline.json") -Raw | ConvertFrom-Json
-$shared = Join-Path $u ".agents\skills"
-$claude = Join-Path $u ".claude\skills"
+$root   = if ($Project) { $Project } else { $u }
+$shared = Join-Path $root ".agents\skills"
+$claude = Join-Path $root ".claude\skills"
 $utf8   = New-Object System.Text.UTF8Encoding $false
 New-Item -ItemType Directory -Force $shared, $claude | Out-Null
 
@@ -37,8 +40,19 @@ function Remove-AllowedTools($dir) {
   if ($new -ne $text) { [IO.File]::WriteAllText($md, $new, $utf8); "           (removed allowed-tools)" }
 }
 
-"Skills ($($Packs -join ', '))"
-foreach ($s in $base.skills | Where-Object { $Packs -contains $_.pack }) {
+if ($Project) {
+  "Project skills in $Project ($($Names -join ', '))"
+  $selected = $base.skills | Where-Object { $Names -contains $_.name }
+  $exclude = Join-Path $Project ".git\info\exclude"
+  if (Test-Path (Split-Path $exclude)) {
+    $have = if (Test-Path $exclude) { Get-Content $exclude } else { @() }
+    foreach ($line in ".agents/skills/", ".claude/skills/") { if ($have -notcontains $line) { Add-Content -Encoding utf8 $exclude $line } }
+  }
+} else {
+  "Skills ($($Packs -join ', '))"
+  $selected = $base.skills | Where-Object { $Packs -contains $_.pack -and $_.scope -ne "project" }
+}
+foreach ($s in $selected) {
   $src = Join-Path $repo "packs\$($s.pack)\skills\$($s.name)"
   if (-not (Test-Path (Join-Path $src "SKILL.md"))) { throw "$($s.name): no SKILL.md in $src" }
   $hash = (Get-ChildItem -Recurse -File $src | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash }) -join ""

@@ -21,6 +21,9 @@ hooks silently; the execpolicy rules work without trust).
 | `packs/<pack>/skills/` | vendored skills, listed in `skills/baseline.json` with their pinned source commit; copied to `~/.agents/skills` and junctioned into `~/.claude/skills` |
 | `enforcement/hooks/` | `~/.agent-config/hooks/`; git-guard registered as PreToolUse in both tools |
 | `enforcement/codex-rules/` | `~/.codex/rules/agent-config.rules` (git push, reset --hard forbidden) |
+| `profile.json` `mcp` | Claude Code user-scope MCP server; Codex `[mcp_servers.<name>]` with `enabled_tools` |
+| `profile.json` `npmGlobal`, `claudePlugins` | pinned global npm packages (pyright) and Claude Code plugins (pyright-lsp) |
+| `profile.json` `projectSkills` | skills with `"scope": "project"` installed into one project's `.agents/skills` / `.claude/skills` (git-excluded) |
 
 Profiles: `home` (personal accounts, FrontierCode model table, auto-update) and
 `work` (corporate gateway, no personal data, core pack only). Tiers: `A` installs

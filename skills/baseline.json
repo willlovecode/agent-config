@@ -1,14 +1,90 @@
 {
   "reading": "Vendored skills, approved 2026-11-04 (reports/addons-research-2026-11-04.html, design docs/portable-toolkit-design.md). Each skill is copied into packs/<pack>/skills/<name> at the pinned commit; install.ps1 installs from the repo copy, never from the network. skills-check compares the pins with upstream.",
-  "plugins": { "claude": [], "codex": [] },
+  "plugins": {
+    "claude": [],
+    "codex": []
+  },
   "skills": [
-    { "name": "tdd", "pack": "core", "repo": "mattpocock/skills", "path": "skills/engineering/tdd", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Test-first loop; fired on 2/2 prompts in both tools, 0/3 negatives. Audits Pass/Pass/Pass." },
-    { "name": "diagnosing-bugs", "pack": "core", "repo": "mattpocock/skills", "path": "skills/engineering/diagnosing-bugs", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
-      "tools": ["claude", "codex"], "explicit_only": false, "why": "Feedback-loop-first debugging; fired on 2/2 in both tools. Audits Pass/Pass/Pass." },
-    { "name": "grilling", "pack": "core", "repo": "mattpocock/skills", "path": "skills/productivity/grilling", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
-      "tools": ["claude", "codex"], "explicit_only": true, "why": "Design interview in rounds. Explicit-only so it never starts subagents uninvited." },
-    { "name": "grill-me", "pack": "core", "repo": "mattpocock/skills", "path": "skills/productivity/grill-me", "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
-      "tools": ["claude", "codex"], "explicit_only": true, "why": "Alias that calls grilling; /grill-me." }
+    {
+      "name": "tdd",
+      "pack": "core",
+      "repo": "mattpocock/skills",
+      "path": "skills/engineering/tdd",
+      "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": false,
+      "why": "Test-first loop; fired on 2/2 prompts in both tools, 0/3 negatives. Audits Pass/Pass/Pass."
+    },
+    {
+      "name": "diagnosing-bugs",
+      "pack": "core",
+      "repo": "mattpocock/skills",
+      "path": "skills/engineering/diagnosing-bugs",
+      "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": false,
+      "why": "Feedback-loop-first debugging; fired on 2/2 in both tools. Audits Pass/Pass/Pass."
+    },
+    {
+      "name": "grilling",
+      "pack": "core",
+      "repo": "mattpocock/skills",
+      "path": "skills/productivity/grilling",
+      "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Design interview in rounds. Explicit-only so it never starts subagents uninvited."
+    },
+    {
+      "name": "grill-me",
+      "pack": "core",
+      "repo": "mattpocock/skills",
+      "path": "skills/productivity/grill-me",
+      "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Alias that calls grilling; /grill-me."
+    },
+    {
+      "name": "paper-lookup",
+      "pack": "research",
+      "repo": "K-Dense-AI/scientific-agent-skills",
+      "path": "skills/paper-lookup",
+      "commit": "a25cf9ec00e2745d03f8704acf6f6919694ccd9a",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": false,
+      "modified": true,
+      "why": "18 scholarly APIs with provenance; fired 2/2 in Codex, 1/4 in Claude (call /paper-lookup there). Audits Gen Pass, Socket Pass. Citation section removed, allowed-tools stripped (packs/MODIFICATIONS.md)."
+    },
+    {
+      "name": "spring-boot-skill",
+      "pack": "java",
+      "scope": "project",
+      "repo": "sivaprasadreddy/sivalabs-agent-skills",
+      "path": "skills/spring-boot",
+      "commit": "94f8d9fa21ba659e85cbb8a9b33f6e84883de5ef",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "modified": true,
+      "why": "Spring Boot 4 practices for the energy-billing practice project; explicit-only; known issues appended (packs/MODIFICATIONS.md). Audits Gen Pass, Socket Pass."
+    }
   ]
 }

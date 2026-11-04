@@ -9,9 +9,11 @@ from the design below:
 - Windows only: no `install.sh` yet (home and work are both Windows).
 - The `java` pack is not built: its candidates still need a read and a trial, and
   the work stack's versions are unknown. Work installs `core` only for now.
-- Approved from the add-on report so far: core hooks, Codex rules, Stop runner,
-  tdd, diagnosing-bugs, grilling/grill-me. Context7, pyright-lsp, paper-lookup and
-  the Spring Boot skill wait for your answer on the report.
+- Approved from the add-on report: core hooks, Codex rules, Stop runner, tdd,
+  diagnosing-bugs, grilling/grill-me, and (home only) Context7, pyright-lsp,
+  paper-lookup in a `research` pack, and the Spring Boot skill installed into
+  energy-billing only (`projectSkills` in the home profile). Edits to vendored
+  skills are listed in `packs/MODIFICATIONS.md`.
 
 ## Goal
 
