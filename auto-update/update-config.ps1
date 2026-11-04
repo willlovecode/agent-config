@@ -80,8 +80,9 @@ function Open-InBrowser($path) {
   if (-not $progId) { $progId = (Get-ItemProperty "$assoc\UserChoice" -ErrorAction SilentlyContinue).ProgId }
   $cmd = if ($progId) { (Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$progId\shell\open\command" -ErrorAction SilentlyContinue).'(default)' }
   if ($cmd -match '^\s*"([^"]+)"\s*(.*)$') {
-    $argLine = if ($matches[2] -match '%1') { $matches[2].Replace('%1', $path) } else { "$($matches[2]) `"$path`"" }
-    Start-Process -FilePath $matches[1] -ArgumentList $argLine
+    $exe = $matches[1]; $rest = $matches[2]
+    $argLine = if ($rest.Contains('%1')) { $rest.Replace('%1', "`"$path`"").Replace('""', '"') } else { "$rest `"$path`"" }
+    Start-Process -FilePath $exe -ArgumentList $argLine
   } else { Start-Process -FilePath "explorer.exe" -ArgumentList "`"$path`"" }
 }
 
