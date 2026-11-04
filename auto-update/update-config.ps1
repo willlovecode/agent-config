@@ -21,14 +21,52 @@ $allowed = @("AGENTS.md", "claude/agents/scout.md", "claude/agents/mechanic.md",
 
 function Log($msg) { "$(Get-Date -Format 'HH:mm:ss') $msg" | Add-Content -Encoding utf8 $log }
 
-function Toast($title, $body) {
+function Esc($s) { [Net.WebUtility]::HtmlEncode([string]$s) }
+
+# Writes a self-contained HTML report next to the log; $sections is an ordered
+# hashtable of heading -> string or string[]. Returns the report path.
+function Write-Report($title, $sections) {
+  $path = $log -replace '\.log$', '.html'
+  $body = foreach ($h in $sections.Keys) {
+    $v = @($sections[$h] | Where-Object { $_ })
+    if (-not $v) { continue }
+    "<h2>$(Esc $h)</h2>"
+    if ($v.Count -eq 1) { "<p>$(Esc $v[0])</p>" } else { "<ul>" + (($v | ForEach-Object { "<li>$(Esc $_)</li>" }) -join "") + "</ul>" }
+  }
+  $html = @"
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>$(Esc $title)</title>
+<style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1d1d1f;--mute:#6e6e73;--card:#fff;--line:#e5e5ea}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f5f5f7;--mute:#a1a1a6;--card:#2c2c2e;--line:#3a3a3c}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:760px;margin:32px auto;padding:0 16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:24px 0 6px;color:var(--mute);font-weight:600}
+p,ul{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0}
+ul{padding-left:32px}li{margin:4px 0}.meta{color:var(--mute);font-size:13px;background:none;border:0;padding:0}
+</style><main><h1>$(Esc $title)</h1><p class="meta">$(Get-Date -Format 'yyyy-MM-dd HH:mm') &middot; log: $(Esc $log)</p>
+$($body -join "`n")
+</main></html>
+"@
+  [IO.File]::WriteAllText($path, $html, (New-Object System.Text.UTF8Encoding $false))
+  return $path
+}
+
+# $report: optional HTML file; clicking the toast or its button opens it.
+# $sticky: stays on screen until dismissed (reminder scenario).
+function Toast($title, $body, $report, [switch]$sticky) {
   try {
     [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
     [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
-    $xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-    $t = $xml.GetElementsByTagName("text")
-    $t.Item(0).AppendChild($xml.CreateTextNode($title)) | Out-Null
-    $t.Item(1).AppendChild($xml.CreateTextNode($body)) | Out-Null
+    $open = if ($report) { Esc ([Uri]$report).AbsoluteUri } else { "" }
+    $launch = if ($open) { " activationType=`"protocol`" launch=`"$open`"" } else { "" }
+    $scenario = if ($sticky) { " scenario=`"reminder`"" } else { "" }
+    $actions = @()
+    if ($open) { $actions += "<action content=`"Open report`" activationType=`"protocol`" arguments=`"$open`"/>" }
+    if ($sticky) { $actions += "<action content=`"Dismiss`" activationType=`"system`" arguments=`"dismiss`"/>" }
+    $xmlText = "<toast$launch$scenario><visual><binding template=`"ToastGeneric`"><text>$(Esc $title)</text>" +
+      "<text>$(Esc $body)</text></binding></visual><actions>$($actions -join '')</actions></toast>"
+    $xml = [Windows.Data.Xml.Dom.XmlDocument]::new(); $xml.LoadXml($xmlText)
     $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
   } catch { Log "toast failed: $_" }
@@ -127,11 +165,20 @@ try {
   $msgFile = Join-Path $logDir "commit-msg.txt"
   [IO.File]::WriteAllText($msgFile, $msg, (New-Object System.Text.UTF8Encoding $false))
   Invoke-Git commit -q -F $msgFile
-  Log "committed $(& git -C $repo rev-parse --short HEAD)"
-  Toast "agent config updated" ($upd.summary)
+  $sha = & git -C $repo rev-parse --short HEAD
+  Log "committed $sha"
+  $report = Write-Report "Agent config updated" ([ordered]@{
+    "What changed in the benchmark" = @($check.changes)
+    "What was edited" = $upd.summary
+    "Commit (local, not pushed)" = "$sha in $repo - undo with: git -C `"$repo`" revert $sha"
+    "Files" = @($touched)
+    "Cross-checks" = @($check.cross_checks | ForEach-Object { "$($_.source): $($_.status) - $($_.note)" })
+  })
+  Toast "agent config updated" ($upd.summary) $report -sticky
   exit 0
 } catch {
   Log "FAILED in $phase phase: $_"
-  Toast "agent config $phase failed" "Log: $log"
+  $report = Write-Report "Agent config $phase failed" ([ordered]@{ "Error" = "$_"; "Benchmark changes found" = @($check.changes) })
+  Toast "agent config $phase failed" "$_" $report -sticky
   exit 1
 }
