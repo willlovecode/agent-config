@@ -29,7 +29,7 @@ AGENTS.md.
 
 ## Model choice
 Pick the cheapest setting that scores near the top for the kind of task. The
-table is a reading of FrontierCode 1.1 (all reasoning levels) from 2026-10-28 (unchanged since 2026-10-18);
+table is a reading of FrontierCode 1.1 (all reasoning levels) from 2026-11-04 (unchanged since 2026-10-18);
 Artificial Analysis was last read on 2026-10-11 and not again.
 
 | Task | Claude Code | Codex |
