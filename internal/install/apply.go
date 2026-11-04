@@ -297,8 +297,10 @@ func (a *applier) claudeConfig(items []*catalog.Item) error {
 		a.say("Enforcement")
 		if a.Tier == "A" {
 			if a.useClaude {
+				// A hook that can't start (blocked exe, missing file, timeout) lets the call through
+				// unless onFailure is "block" (Claude Code 2.1.295+).
 				setHookGroup(s, "PreToolUse", "git-guard", ojson.Obj("matcher", "Bash|PowerShell", "hooks", []any{
-					ojson.Obj("type", "command", "command", a.exe, "args", []string{"hook", "git-guard"}, "timeout", 10)}))
+					ojson.Obj("type", "command", "command", a.exe, "args", []string{"hook", "git-guard"}, "timeout", 10, "onFailure", "block")}))
 				a.say("  Claude Code: git-guard PreToolUse hook")
 			}
 			if a.useCodex {

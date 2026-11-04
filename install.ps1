@@ -111,7 +111,8 @@ New-Item -ItemType Directory -Force $hooksDir | Out-Null
 Copy-Item -Force (Join-Path $repo "enforcement\hooks\*.mjs") $hooksDir
 $guard = Join-Path $hooksDir "git-guard.mjs"
 if ($Tier -eq "A") {
-  Set-HookGroup $s "PreToolUse" ([pscustomobject]@{ matcher = "Bash|PowerShell"; hooks = @([pscustomobject]@{ type = "command"; command = "node"; args = @($guard); timeout = 10 }) }) "git-guard.mjs"
+  # onFailure = block: without it a hook that can't start (node missing) lets the call through.
+  Set-HookGroup $s "PreToolUse" ([pscustomobject]@{ matcher = "Bash|PowerShell"; hooks = @([pscustomobject]@{ type = "command"; command = "node"; args = @($guard); timeout = 10; onFailure = "block" }) }) "git-guard.mjs"
   "  Claude Code: git-guard PreToolUse hook"
   $ch = Join-Path $codex "hooks.json"
   $c = Read-Json $ch

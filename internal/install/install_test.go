@@ -126,6 +126,13 @@ func TestApplyMigrateRerunUndo(t *testing.T) {
 	if cmd := hooks.Hooks["PreToolUse"][0].Hooks[0].Command; !strings.HasSuffix(cmd, `agtk.exe" hook git-guard`) {
 		t.Errorf("codex hook command %q", cmd)
 	}
+	var claudeHooks struct {
+		Hooks map[string][]struct{ Hooks []struct{ OnFailure string } }
+	}
+	json.Unmarshal([]byte(read(t, filepath.Join(o.Home, ".claude/settings.json"))), &claudeHooks)
+	if g := claudeHooks.Hooks["PreToolUse"]; len(g) == 0 || g[len(g)-1].Hooks[0].OnFailure != "block" {
+		t.Error("claude git-guard hook must fail closed (onFailure: block)")
+	}
 
 	// A second run changes nothing, so its backup records nothing.
 	before := Backups(StateDir(o.Home))

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wizard research</title>
+<style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1d1d1f;--mute:#6e6e73;--card:#fff;--line:#e5e5ea;--keep:#1f7a3a;--drop:#b3261e;--ask:#8a5a00;--add:#0b57d0}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f5f5f7;--mute:#a1a1a6;--card:#2c2c2e;--line:#3a3a3c;--keep:#5fd17a;--drop:#ff8a80;--ask:#f2c14e;--add:#8ab4f8}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif}
+main{max-width:880px;margin:32px auto;padding:0 16px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:32px 0 8px}h3{font-size:15px;margin:0 0 6px}
+.meta{color:var(--mute);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-top:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;border-top:0}
+td:first-child{font-weight:700;white-space:nowrap}
+.kv td:first-child{font-weight:600;color:var(--mute);width:120px;white-space:normal}
+.tag{font-weight:700;font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.keep{color:var(--keep)}.drop{color:var(--drop)}.ask{color:var(--ask)}.add{color:var(--add)}
+code{font:13px Consolas,monospace;overflow-wrap:anywhere}
+.wrap{overflow-x:auto}
+ul{margin:6px 0;padding-left:22px}
+pre.scr{font:12px/1.0 Consolas,"Cascadia Mono",monospace;background:#000;padding:6px;margin:8px 0;overflow-x:auto;border-radius:6px}
+.shots{display:grid;grid-template-columns:1fr;gap:4px}
+.cap{color:var(--mute);font-size:12px;margin:0}
+</style>
+<main>
+<h1>Wizard research: how to build the AI toolkit installer</h1>
+<p class="meta">2026-11-05 &middot; for approval &middot; nothing installed in your real setup, nothing in this repo changed except this report &middot; reply with the numbers, e.g. "1-4 yes, 6 change X"</p>
+
+<div class="card">
+<b>Summary.</b> Build it yourself in <b>Go</b>, as one static binary with the engine as a library and thin front ends: a DOS-style console UI on <b>tview/tcell</b> now, a <code>--plain</code> line mode for screen readers and CI, and later a Windows GUI that drives the same engine through a JSON plan. Nothing I found combines a machine scan, a questionnaire and a safe merge; the closest tools (vercel <code>skills</code>, rulesync, ruler, claude-code-templates) all need Node and only cover parts. The engine works as <b>scan &rarr; answers &rarr; rules &rarr; plan &rarr; diff &rarr; apply with backup and ownership manifest</b>; only the answers are saved. Ship through GitHub Releases with checksums, build attestations and an SBOM; sign later through SignPath Foundation, because Azure Artifact Signing isn't open to individuals in Germany.
+<br><br>
+<b>The earlier draft</b> (<code>docs/wizard-design.md</code>, which I read only after writing my own answer) <b>made the same core choice</b>: Go, tcell, one binary, hooks as subcommands. Section 10 lists eight changes I'd make to it. The most important: the Windows path of Codex <code>requirements.toml</code> is now confirmed; the scan should read the Claude Code <b>registry</b> policy too; and the draft's network-reachability check contradicts "no network calls". The biggest finding came from Codex's review, which I then verified: <b>a Claude Code hook that fails to start lets the tool call through by default</b>. So if company policy blocks <code>agtk.exe</code>, the git guard switches off without a sound. Hooks must be written with <code>"onFailure": "block"</code> (Claude Code v2.1.295+), and the binary must be test-run from its install folder before hooks point at it. This also contradicts the add-ons report's "fails closed" note for today's Node hook.
+<br><br>
+<b>Prototypes.</b> I built the same setup screen in Go/tview, Rust/ratatui and .NET/Terminal.Gui. I ran each in the old console host (conhost) and in WSL Ubuntu (tmux), with key presses, resizing, <code>TERM=linux</code> and <code>LANG=C</code>. Windows Terminal screenshots are missing: my first attempt grabbed your screen while a game was running. I deleted those captures and switched to headless captures (section 2).
+<br><br>
+<b>Models used</b> (AGENTS.md table, FrontierCode 1.1 reading of 2026-11-04): main session Opus at medium; six searching and reading agents on <b>Haiku at medium</b> ("finding where things live" row). The <code>scout</code> agent has no web tools, so these were general-purpose agents pinned to Haiku/medium. One fact-check page reader, no Opus fan-out. Codex second opinion on <code>--profile deep</code> (GPT-6 Astra, max).
+</div>
+
+<h2>Recommendations</h2>
+
+<div class="card"><h3>1 &middot; Prior art: build your own, borrow ideas <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td>Write the wizard yourself. Borrow three ideas: claude-code-templates' interactive catalog flow, rulesync/ruler's map of "one source &rarr; many agent file locations", and the vercel <code>skills</code> CLI's per-agent skill folder table (for when more agents are added).</td></tr>
+<tr><td>Why not fork</td><td>
+<ul>
+<li><b>vercel-labs/skills</b> (38.1k&#9733;, v1.7.6 2026-11-03, MIT, TypeScript): installs skills into 75+ agents. Skills only, no AGENTS.md, hooks or settings, and it needs Node.</li>
+<li><b>rulesync</b> (1.6k&#9733;, v43.6.0 2026-11-03, MIT, Node): generates rules, MCP, commands, subagents and skills for many tools from one source. No scan, no questions. I couldn't read whether it merges or overwrites.</li>
+<li><b>ruler</b> (3.0k&#9733;, v0.3.46 2026-10-22, MIT, Node): centralises instructions and MCP config. Same gaps.</li>
+<li><b>claude-code-templates</b> (33.1k&#9733;, v1.29.7 2026-10-09, MIT, Node): the closest UX, an interactive browser and installer, but Claude Code only, with no scan or merge guarantees.</li>
+<li>Found by Codex: <b><a href="https://github.com/PriyanshuGeTRekT/AI-harness-Character-creator">AgentDeck</a></b> (2&#9733;, v1.0.0 2026-10-06, MIT, JS) is a local GUI with agent detection, presets, diff preview, managed blocks and undo for 20+ agents; by its own account only Claude Code was tested live. <b><a href="https://github.com/wpfleger96/ai-agent-rules">ai-agent-rules</a></b> (10&#9733;, v0.81.2 2026-11-01, MIT, Python) has an interactive wizard, profiles and a merge pipeline. Both are small and unproven, but worth reading for their merge code before writing yours. Neither handles corporate policy.</li>
+<li><b>openskills</b> (10.8k&#9733;): last release 2026-01-17, stale. <b>smithery CLI</b>: AGPL. <b>mcp-installer</b>: stale since 2024.</li>
+<li><b>chezmoi</b> (22.2k&#9733;, v2.74.0 2026-11-01): a strong dotfile engine, but its model is "your files, your templates", not a curated catalog with reasons. <b>winget configure</b> is Windows-only (DSC YAML), so it can't be the output format.</li>
+<li>Neither Anthropic nor OpenAI has a setup wizard. The official pieces are building blocks: Claude Code plugin marketplaces, <code>claude mcp add</code>, managed settings, Codex <code>requirements.toml</code>.</li>
+</ul></td></tr>
+<tr><td>Evidence</td><td>GitHub API, read 2026-11-04: <a href="https://github.com/vercel-labs/skills">vercel-labs/skills</a>, <a href="https://github.com/dyoshikawa/rulesync">rulesync</a>, <a href="https://github.com/intellectronica/ruler">ruler</a>, <a href="https://github.com/davila7/claude-code-templates">claude-code-templates</a>, <a href="https://github.com/twpayne/chezmoi">chezmoi</a>, <a href="https://learn.microsoft.com/en-us/windows/package-manager/winget/configure">winget configure</a> (2026-07-19). HN 2026-10-22: <a href="https://news.ycombinator.com/item?id=50197411">malicious AGENTS.md files dropped into Downloads</a> (4 points), one more reason never to overwrite instruction files blindly. HN 2026-09-17: <a href="https://news.ycombinator.com/item?id=49744398">69% of 216 public skills don't trigger reliably</a> (3 points), which supports a small, tested catalog.</td></tr>
+<tr><td>Risks</td><td>You maintain the per-agent path knowledge yourself. For two agents, that is small.</td></tr>
+</table></div>
+
+<div class="card"><h3>2 &middot; Language and UI: Go with tview on tcell <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td><b>Go</b>, one module: <code>engine/</code> (scan, catalog, rules, plan, apply) has no UI imports. Front ends: <code>tui/</code> (tview), <code>plain/</code> (numbered prompts), later <code>gui/</code>. The GUI talks to the engine either in-process (a Go GUI) or through <code>agtk plan --json</code> / <code>agtk apply --plan file</code>, so a WinForms or WebView2 shell would also work.</td></tr>
+<tr><td>Prototype results</td><td>
+<div class="wrap"><table>
+<tr><th></th><th>Go + tview 0.42 / tcell 2.13</th><th>Rust + ratatui 0.30 / crossterm 0.29</th><th>.NET 10 + Terminal.Gui 2.5</th></tr>
+<tr><td>Binary (x64, stripped)</td><td>3.46 MB win / 3.38 MB linux</td><td><b>0.43 MB</b> win / 0.55 MB linux</td><td>12.7 MB win / 14.3 MB linux (single-file, trimmed, compressed) + a 0.5 MB native regex library alongside</td></tr>
+<tr><td>Start to first frame and exit, WSL (5 runs)</td><td>11&ndash;30 ms</td><td><b>4&ndash;7 ms</b></td><td>2.0&ndash;2.3 s</td></tr>
+<tr><td>Same, hidden conhost incl. host start (baseline 0.2 s)</td><td>0.39&ndash;0.51 s</td><td><b>0.16&ndash;0.19 s</b></td><td>2.6&ndash;4.5 s</td></tr>
+<tr><td>conhost: frames, colours</td><td>correct, 16-colour blue</td><td>correct</td><td>correct, but bright blue and &#9673;/&#9745; glyphs that raster fonts lack</td></tr>
+<tr><td>Keys (Down, Space, Tab, Down, Down, Space)</td><td>worked in conhost and WSL</td><td>worked in conhost and WSL</td><td>no effect in either: probably my focus setup, not investigated</td></tr>
+<tr><td>Resize in WSL</td><td>redraws; below the window size it clips the frame off-centre</td><td>redraws and shrinks the window, but <b>silently drops the last checkbox row</b></td><td>redraws</td></tr>
+<tr><td><code>TERM=linux</code></td><td>switches to 8/16-colour codes (terminfo)</td><td>still sends 256-colour codes</td><td>switches to 16-colour codes</td></tr>
+<tr><td><code>LANG=C</code></td><td>frames become <code>?</code>: ASCII fallback must be coded (see capture)</td><td>ignores the locale, always sends UTF-8</td><td>ignores the locale, always sends UTF-8</td></tr>
+<tr><td>Build on this PC</td><td><code>go build</code>; Linux binary cross-compiled from Windows in seconds</td><td>needs MSVC Build Tools, or the GNU toolchain plus <code>llvm-dlltool</code> from llvm-mingw (what I used); Linux built inside WSL</td><td>portable SDK; NativeAOT would need MSVC on Windows</td></tr>
+</table></div>
+<p class="cap">Captures: the console buffer read cell by cell (characters and colours exactly as conhost holds them), rendered here as text. These are not pixel screenshots. Go in conhost after the key presses:</p>
+<pre class="scr"><span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">╔═════════════════════</span><span style="color:#ffff00;background:#000080"> Agent Toolkit Setup </span><span style="color:#ffffff;background:#000080">════════════════════╗</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                                                              </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">Setup will configure Claude Code and Codex on this </span><span style="color:#c0c0c0;background:#000080">         </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">computer.</span><span style="color:#c0c0c0;background:#000080">                                                   </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">Nothing is written until you confirm the summary.</span><span style="color:#c0c0c0;background:#000080">           </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">╔═════════════════</span><span style="color:#ffff00;background:#000080"> How will you use it? </span><span style="color:#ffffff;background:#000080">═════════════════╗</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║( ) Personal</span><span style="color:#c0c0c0;background:#000080">                                            </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#000080;background:#c0c0c0">(•) Corporate (company gateway)</span><span style="color:#c0c0c0;background:#000080">                         </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║( ) Both, separate profiles</span><span style="color:#c0c0c0;background:#000080">                             </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">╚════════════════════════════════════════════════════════╝</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">╔══════════════════</span><span style="color:#ffff00;background:#000080"> Install these items </span><span style="color:#ffffff;background:#000080">═════════════════╗</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║[X] AGENTS.md base rules</span><span style="color:#c0c0c0;background:#000080">                                </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║[X] git-guard hook</span><span style="color:#c0c0c0;background:#000080">                                      </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#000080;background:#c0c0c0">[ ] tdd skill</span><span style="color:#c0c0c0;background:#000080">                                           </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║[X] diagnosing-bugs skill</span><span style="color:#c0c0c0;background:#000080">                               </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║[ ] Context7 MCP server</span><span style="color:#c0c0c0;background:#000080">                                 </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">╚════════════════════════════════════════════════════════╝</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                                                              </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                                                              </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                                                              </span><span style="color:#ffffff;background:#000080">║</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                  </span><span style="color:#ffffff;background:#000080">╚══════════════════════════════════════════════════════════════╝</span><span style="color:#c0c0c0;background:#000080">                  </span>
+<span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#c0c0c0;background:#000080">                                                                                                    </span>
+<span style="color:#000000;background:#c0c0c0"> ENTER=Select  SPACE=Toggle  TAB=Next field  F3=Exit</span><span style="color:#c0c0c0;background:#c0c0c0">                                                </span>
+</pre>
+<p class="cap">Rust in conhost after the same keys:</p>
+<pre class="scr"><span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#ffffff;background:#000080">                            ╔</span><span style="color:#808000;background:#000080"> Agent Toolkit Setup </span><span style="color:#ffffff;background:#000080">═════════════════════════════════════════╗        </span>
+<span style="color:#ffffff;background:#000080">                            ║                                                              ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  Setup will configure Claude Code and Codex on this          ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  computer.                                                   ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  Nothing is written until you confirm the summary.           ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ╔</span><span style="color:#808000;background:#000080"> How will you use it? </span><span style="color:#ffffff;background:#000080">══════════════════════════════════╗  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║( ) Personal                                            ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║(•) Corporate (company gateway)                         ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║( ) Both, separate profiles                             ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ╚════════════════════════════════════════════════════════╝  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ╔</span><span style="color:#808000;background:#000080"> Install these items </span><span style="color:#ffffff;background:#000080">═══════════════════════════════════╗  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║[X] AGENTS.md base rules                                ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║[X] git-guard hook                                      ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║</span><span style="color:#000080;background:#c0c0c0">[ ] tdd skill</span><span style="color:#ffffff;background:#000080">                                           ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║[X] diagnosing-bugs skill                               ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ║[ ] Context7 MCP server                                 ║  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║  ╚════════════════════════════════════════════════════════╝  ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║                                                              ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║                                                              ║        </span>
+<span style="color:#ffffff;background:#000080">                            ║                                                              ║        </span>
+<span style="color:#ffffff;background:#000080">                            ╚══════════════════════════════════════════════════════════════╝        </span>
+<span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#ffffff;background:#000080">                                                                                                    </span>
+<span style="color:#000000;background:#c0c0c0"> ENTER=Select  SPACE=Toggle  TAB=Next field  F3=Exit                                                </span>
+</pre>
+<p class="cap">.NET in conhost (keys had no effect):</p>
+<pre class="scr"><span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#ffffff;background:#0000ff">                  ╔╡</span><span style="color:#0000ff;background:#808080">Agent Toolkit Setup</span><span style="color:#ffffff;background:#0000ff">╞═════════════════════════════════════════╗                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║                                                              ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  Setup will configure Claude Code and Codex on this          ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  computer. Nothing is written until you confirm the summary. ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║                                                              ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ╔╡</span><span style="color:#0000ff;background:#808080">How will you use it?</span><span style="color:#ffffff;background:#0000ff">╞══════════════════════════════════╗  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║</span><span style="color:#0000ff;background:#808080">◉ Personal                   </span><span style="color:#ffffff;background:#0000ff">                           ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║○ Corporate (company gateway)                           ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║○ Both, separate profiles                               ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ╚════════════════════════════════════════════════════════╝  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ╔╡Install these items╞═══════════════════════════════════╗  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║☑ AGENTS.md base rules                                  ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║☑ git-guard hook                                        ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║☑ tdd skill                                             ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║☑ diagnosing-bugs skill                                 ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ║☐ Context7 MCP server                                   ║  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║  ╚════════════════════════════════════════════════════════╝  ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║                                                              ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║                                                              ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ║                                                              ║                  </span>
+<span style="color:#ffffff;background:#0000ff">                  ╚══════════════════════════════════════════════════════════════╝                  </span>
+<span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#ffffff;background:#0000ff">                                                                                                    </span>
+<span style="color:#000080;background:#c0c0c0"> Enter  Select │ Space  Toggle │ Tab  Next field │ F3  Exit                                         </span>
+</pre>
+<p class="cap">Go under <code>LANG=C</code> in WSL: no automatic ASCII fallback for double lines.</p>
+<pre class="scr"><span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">??????????????????????</span><span style="color:#ffff00;background:#000080"> Agent Toolkit Setup </span><span style="color:#ffffff;background:#000080">?????????????????????</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">                                                              </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">Setup will configure Claude Code and Codex on this </span><span style="color:#c0c0c0;background:#000080">         </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">computer.</span><span style="color:#c0c0c0;background:#000080">                                                   </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">Nothing is written until you confirm the summary.</span><span style="color:#c0c0c0;background:#000080">           </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">??????????????????</span><span style="color:#ffff00;background:#000080"> How will you use it? </span><span style="color:#ffffff;background:#000080">??????????????????</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#000080;background:#c0c0c0">(?) Personal</span><span style="color:#c0c0c0;background:#000080">                                            </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?( ) Corporate (company gateway)</span><span style="color:#c0c0c0;background:#000080">                         </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?</span>
+<span style="color:#c0c0c0;background:#000080">    </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?( ) Both, separate profiles</span><span style="color:#c0c0c0;background:#000080">                             </span><span style="color:#ffffff;background:#000080">?</span><span style="color:#c0c0c0;background:#000080">  </span><span style="color:#ffffff;background:#000080">?</span>
+</pre>
+<p class="cap">Rust at 60&times;18 in WSL: the "Context7" row is gone without a hint. Every stack needs a "terminal too small" screen.</p>
+<pre class="scr"><span style="color:#ffffff;background:#000080">╔</span><span style="color:#808000;background:#000080"> Agent Toolkit Setup </span><span style="color:#ffffff;background:#000080">═════════════════════════════════════╗</span>
+<span style="color:#ffffff;background:#000080">║                                                          ║</span>
+<span style="color:#ffffff;background:#000080">║  Setup will configure Claude Code and Codex on this      ║</span>
+<span style="color:#ffffff;background:#000080">║  computer.                                               ║</span>
+<span style="color:#ffffff;background:#000080">║  Nothing is written until you confirm the summary.       ║</span>
+<span style="color:#ffffff;background:#000080">║  ╔</span><span style="color:#808000;background:#000080"> How will you use it? </span><span style="color:#ffffff;background:#000080">══════════════════════════════╗  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║( ) Personal                                        ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║(•) Corporate (company gateway)                     ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║( ) Both, separate profiles                         ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ╚════════════════════════════════════════════════════╝  ║</span>
+<span style="color:#ffffff;background:#000080">║  ╔</span><span style="color:#808000;background:#000080"> Install these items </span><span style="color:#ffffff;background:#000080">═══════════════════════════════╗  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║[X] AGENTS.md base rules                            ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║[X] git-guard hook                                  ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║</span><span style="color:#000080;background:#c0c0c0">[ ] tdd skill</span><span style="color:#ffffff;background:#000080">                                       ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ║[X] diagnosing-bugs skill                           ║  ║</span>
+<span style="color:#ffffff;background:#000080">║  ╚════════════════════════════════════════════════════╝  ║</span>
+<span style="color:#ffffff;background:#000080">╚══════════════════════════════════════════════════════════╝</span>
+<span style="color:#000000;background:#c0c0c0"> ENTER=Select  SPACE=Toggle  TAB=Next field  F3=Exit</span>
+</pre>
+</td></tr>
+<tr><td>Alternatives</td><td>
+<ul>
+<li><b>Rust + ratatui</b>: the runner-up. Smallest and fastest, ratatui is active (23.2k&#9733;, last push 2026-11-03), and <code>BorderType::Double</code> is built in. Against it: radio, checkbox and focus widgets are yours to write; the Windows toolchain (MSVC licence or a MinGW workaround) is friction for one person; crossterm needs your own TERM and locale detection. Choose it if binary size or startup matters more to you than speed of writing.</li>
+<li><b>.NET + Terminal.Gui v2</b> (11.3k&#9733;, v2.5.0 2026-09-11): the most widgets out of the box, and the best Windows GUI path (WinForms/WPF/Avalonia in the same language). But: 2&ndash;4 s start, a 13 MB file, and NativeAOT needs MSVC on Windows. Its default look is a modern TUI (&#9673; &#9745; title tabs), so the DOS look needs re-theming.</li>
+<li><b>Bubble Tea v2</b> (Go, 45.6k&#9733;, v2.1.1 2026-10-28): Elm-style, very active, but no ready radio/checkbox/frame widgets for this look. tview is the shorter path. Fine to revisit if tview stalls.</li>
+</ul></td></tr>
+<tr><td>Risks</td><td>tview's last release is v0.42.0 (2025-08-27), with commits until 2026-08, and it stays on tcell v2 while tcell v3.6.0 is out (2026-10-11). Keep the widgets you use (frame, radio, checklist, key bar) behind your own small interface, so moving to plain tcell or Bubble Tea later only touches <code>tui/</code>. The first conhost frame in Go took about 0.2 s longer than Rust; still fine for a wizard.</td></tr>
+<tr><td>GUI later</td><td>Go options: Wails (WebView2, HTML UI), walk or win32 bindings (native, Windows only), Fyne (own look, not native). I lean to <b>Wails or a small WinForms shell over the JSON plan</b>. Decide when the GUI phase starts; the JSON plan keeps the choice open.</td></tr>
+</table></div>
+
+<div class="card"><h3>3 &middot; Machine scan without admin rights <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td>Pure Go, no cgo. The result is a typed struct in memory with coarse values; it is never written.</td></tr>
+<tr><td>Hardware</td><td>CPU and RAM: gopsutil v4 (cgo-free) or <code>/proc/cpuinfo</code>/<code>/proc/meminfo</code> and <code>GlobalMemoryStatusEx</code> directly. GPU on Windows: <b>DXGI</b> (<code>DedicatedVideoMemory</code> is 64-bit) or the display-class registry value <code>HardwareInformation.qwMemorySize</code>. <b>Not</b> WMI <code>Win32_VideoController.AdapterRAM</code>: it is a uint32, so 8 GB cards read as 4 GB or less (<a href="https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-videocontroller">MS Learn</a>, 2023-11-09; <a href="https://learn.microsoft.com/en-us/windows/win32/api/dxgi/ns-dxgi-dxgi_adapter_desc1">DXGI_ADAPTER_DESC1</a>, 2024-02-22). Linux: <code>/sys/class/drm/card*/device/vendor</code> and <code>mem_info_vram_total</code> (AMD), <code>nvidia-smi</code> if present. Store buckets ("8 GB VRAM class"), not models.</td></tr>
+<tr><td>Tools</td><td>Look each one up on PATH (claude, codex, node, git, uv, python, java, mvn, gradle, go, docker, gh). Skip the <code>WindowsApps\python.exe</code> Store stub; your add-on research hit it with pyright. Run <code>--version</code> only with a 2 s timeout and no shell. A tool found in the current folder ahead of PATH is a hijack risk, so resolve absolute paths first.</td></tr>
+<tr><td>Claude Code policies</td><td>Files: <code>C:\Program Files\ClaudeCode\managed-settings.json</code> + <code>managed-settings.d\</code> + <code>managed-mcp.json</code>; Linux <code>/etc/claude-code/&hellip;</code>. <b>Registry</b>: <code>HKLM\SOFTWARE\Policies\ClaudeCode</code>, value <code>Settings</code> (JSON), and the same path under HKCU as the lowest managed source. The legacy <code>C:\ProgramData\ClaudeCode</code> is no longer read. Keys that change what the wizard may do: <code>allowManagedHooksOnly</code>, <code>strictKnownMarketplaces</code>, <code>allowManagedMcpServersOnly</code>, <code>allowManagedPermissionRulesOnly</code> (all managed-only), plus <code>disableAllHooks</code>, <code>forceLoginMethod</code>, <code>apiKeyHelper</code>. Sources: <a href="https://code.claude.com/docs/en/managed-settings">managed settings</a>, <a href="https://code.claude.com/docs/en/settings-reference">settings reference</a>, read 2026-11-05.</td></tr>
+<tr><td>Codex policies</td><td><code>requirements.toml</code>: <code>/etc/codex/requirements.toml</code> and <b><code>%ProgramData%\OpenAI\Codex\requirements.toml</code></b> (confirmed verbatim). Relevant keys: top-level <code>allow_managed_hooks_only</code> (not inside <code>[hooks]</code>; Codex corrected me, then I verified it), <code>[features] plugins = false</code>, <code>[marketplaces] restrict_to_allowed_sources</code>, <code>mcp_servers</code> (an empty table disables all MCP), <code>[rules]</code>. Cloud and macOS-MDM requirements can't be read locally. So the scan reports each capability as <b>allowed / blocked / unknown</b>, together with where that came from, and "unknown" never counts as allowed. One nuance: Claude Code's <code>allowManagedMcpServersOnly</code> restricts which allowlists count; it doesn't ban user MCP servers outright. <code>managed_config.toml</code> paths are unconfirmed. Source: <a href="https://learn.chatgpt.com/docs/enterprise/managed-configuration">managed configuration</a>, read 2026-11-05.</td></tr>
+<tr><td>Gateways and proxies</td><td>Record only <i>whether</i> these are set: <code>ANTHROPIC_BASE_URL</code>, <code>ANTHROPIC_BEDROCK_BASE_URL</code>/<code>VERTEX</code>, <code>CLAUDE_CODE_USE_*</code>, <code>OPENAI_BASE_URL</code>, Codex <code>model_providers</code>, <code>HTTP(S)_PROXY</code>, <code>NODE_EXTRA_CA_CERTS</code>, the WinINet <code>ProxyServer</code>/<code>AutoConfigURL</code> values under HKCU. Never the values: URLs can hold credentials. If the user picks "gateway", ask for model names instead of probing.</td></tr>
+<tr><td>Never collect</td><td>Usernames, hostnames, domain names, full paths (they contain the username), environment variable values, tokens or API keys from settings files, proxy URLs, serial numbers, MAC addresses, GPU or CPU serials. Read config files for <i>key presence</i>. This follows GDPR Art. 5(1)(c) data minimisation (<a href="https://gdpr-info.eu/art-5-gdpr/">text</a>).</td></tr>
+<tr><td>Not checked</td><td>Whether a standard user can read AppLocker/App Control policy (<code>Get-AppLockerPolicy -Effective</code>, SrpV2 registry) and <code>dsregcmd /status</code>. A more reliable test is empirical: copy the binary to its install folder and run <code>agtk version</code> from there (item 5).</td></tr>
+</table></div>
+
+<div class="card"><h3>4 &middot; Catalog and recommendation rules <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td>One YAML file per item, embedded with <code>go:embed</code>, checked against a JSON Schema in CI (<a href="https://github.com/santhosh-tekuri/jsonschema">santhosh-tekuri/jsonschema</a> v6.0.3, 2026-08-06). Rules are <b>structured YAML conditions</b>, not a text language: <code>all:</code> / <code>any:</code> / <code>not:</code> over <code>{fact, op, value}</code>. That needs no parser and no precedence or escaping rules, and the evaluator still returns a <b>trace</b> per clause, so F1 can show "recommended because: stacks contains java &#10003;, tool codex &#10003;" from the actual evaluation. (Changed after Codex's review; my first answer was a small text language like the draft's.) Define missing values explicitly: with <code>use</code> unknown, <code>use != personal</code> must be <i>unknown</i>, not true. Each item also carries supported client versions, dependencies, conflicts, its pinned source and its install scope.</td></tr>
+<tr><td>Alternatives</td><td><a href="https://github.com/expr-lang/expr">expr-lang/expr</a> (8.1k&#9733;, v1.17.8): mature and side-effect-free, but no clause trace and more syntax than needed. <a href="https://github.com/google/cel-go">cel-go</a>: the standard, but a heavy dependency for a dozen rules. JSONLogic: unreadable in YAML. OPA/Rego: far too heavy. Plain Go code per item: fastest to write, but contributors then need Go to add an item.</td></tr>
+<tr><td>Context cost</td><td>Per item, store the always-loaded text: AGENTS.md modules (every session), skill <code>description</code> + <code>when_to_use</code> (listed every turn, capped at 1,536 characters each), and subagent descriptions. MCP tools cost about 0 in Claude Code because tool search defers all of them by default (<a href="https://code.claude.com/docs/en/mcp">MCP docs</a>, read 2026-11-05). In the wizard, use chars/4. In CI, use the free <code>count_tokens</code> endpoint against the target model: Opus 4.7+ models tokenize about 30% heavier (<a href="https://platform.claude.com/docs/en/build-with-claude/token-counting">token counting</a>). Codex caps project docs at 32 KiB (<code>project_doc_max_bytes</code>).</td></tr>
+<tr><td>Risks</td><td>A home-made language grows. Keep it to <code>and/or/not</code>, <code>==, !=, &gt;=, contains</code> and version comparison, and fail CI on unknown fact names.</td></tr>
+</table></div>
+
+<div class="card"><h3>5 &middot; Writing config safely <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td><b>plan &rarr; diff &rarr; apply</b>. The plan is a list of file operations, shown as a diff on the summary screen and available as <code>--json</code>.
+<ul>
+<li><b>Ownership manifest</b> (<code>~/.agtk/state.json</code>): every key, block or file agtk wrote, with the hash <i>and the previous value</i> of what it wrote. Re-runs do a three-way comparison (what agtk wrote last, what is there now, what it wants now). Items the user changed by hand become explicit conflicts on the summary screen, never silent overwrites. Undo must keep changes the user made after the apply.</li>
+<li><b>Markdown</b>: managed blocks between <code>&lt;!-- agtk:begin id --&gt;</code> markers, the same idea as Ansible <code>blockinfile</code>.</li>
+<li><b>JSON</b> (<code>settings.json</code>, <code>hooks.json</code>): patch only owned keys, keeping order and comments. <a href="https://github.com/tailscale/hujson">tailscale/hujson</a> gives a comment-preserving tree; test its round-trip first.</li>
+<li><b>TOML</b> (<code>config.toml</code>): <a href="https://github.com/creachadair/tomledit">creachadair/tomledit</a> keeps order and comments. pelletier/go-toml v2 and BurntSushi/toml lose formatting.</li>
+<li><b>Writes</b>: temp file in the same folder, then replace. Go's <code>os.Rename</code> does not promise atomic replacement on Windows, so use <code>ReplaceFile</code>/<code>MoveFileEx</code> there and test it. Keep permissions; handle symlinks and junctions deliberately; protect the backups (they may contain secrets from existing files). Keep a journal, so a run interrupted halfway through several files can be finished or rolled back. A timestamped backup per run, and <code>agtk undo</code>.</li>
+<li><b>Concurrency</b>: Claude Code itself rewrites <code>~/.claude.json</code>, and concurrent writes have corrupted it (<a href="https://github.com/anthropics/claude-code/issues/29004">#29004</a>, closed as a duplicate 2026-02-26). A lock only stops a second agtk, and a re-check still leaves a race. So for v0.1: <b>ask the user to close Claude Code and Codex</b> before writing shared files, and prefer <code>claude mcp add</code> over editing <code>~/.claude.json</code> directly. An imported plan (<code>apply --plan</code>) is validated against allowed operations and target folders, and policy and file state are re-checked at apply time.</li>
+<li><b>Hooks without Node</b>: the hooks are subcommands of the same binary (<code>agtk hook git-guard</code>). <b>A hook that can't start, times out or exits with an error lets the Claude Code tool call proceed by default.</b> Only <code>"onFailure": "block"</code> (Claude Code v2.1.295+) makes it fail closed (<a href="https://code.claude.com/docs/en/hooks#block-the-action-when-a-hook-fails">hooks docs</a>, verified 2026-11-05). So: write <code>onFailure: "block"</code> and gate on the Claude Code version. Copy the binary to its install folder and <b>run it from there</b> before registering hooks. If it can't run (App Control/AppLocker), fall back to tier B (permission rules) and say so. Test a denied launch, a missing binary and a timeout.</li>
+</ul></td></tr>
+<tr><td>Testing</td><td>Golden files under <code>testdata/</code> with an <code>-update</code> flag. <a href="https://github.com/rogpeppe/go-internal">testscript</a> (v1.15.0) for end-to-end CLI runs with a fake <code>$HOME</code>. Property test: apply twice changes nothing; apply then undo restores the bytes. CI on <code>windows-latest</code> and <code>ubuntu-latest</code>; Docker for other distros (Fedora, Alpine/musl); WSL locally. Windows Sandbox is not available on Windows 11 Home.</td></tr>
+<tr><td>Risks</td><td>Formats you don't own change, for example Codex hook trust hashes and Claude Code's settings schema. Pin the agent versions in the catalog (<code>supports: claude &gt;= 2.1.x</code>) and let <code>agtk status</code> warn on drift.</td></tr>
+</table></div>
+
+<div class="card"><h3>6 &middot; Distribution and trust <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>v0.1</td><td>
+<ul>
+<li>GoReleaser in GitHub Actions on a tag: zip (Windows) and tar.gz (Linux) for x64 and arm64.</li>
+<li><code>SHA256SUMS</code>, an SBOM, <code>actions/attest-build-provenance</code>, and <b>immutable releases</b> (GA 2025-10-28). Users can check with <code>gh attestation verify</code> or <code>gh release verify-asset</code>.</li>
+<li>Build with <code>-trimpath</code> and <code>govulncheck</code> in CI.</li>
+<li>The README explains SmartScreen's "More info &rarr; Run anyway" honestly.</li>
+<li>No <code>curl | sh</code> and no <code>irm | iex</code>: a download link plus a checksum line per OS. The offline zip is the corporate path.</li>
+<li>Self-update: notify only (<code>agtk status</code> says a new version exists).</li>
+</ul></td></tr>
+<tr><td>Signing</td><td>
+<ul>
+<li><b>Azure Artifact Signing</b> (formerly Trusted Signing): individual validation is <b>US and Canada only</b>. Organisations in the EU qualify, so only with a registered business. About $9.99/month (<a href="https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart">quickstart</a>, 2026-10-08).</li>
+<li><b>EV certificates no longer skip SmartScreen</b>. Microsoft says buying EV for that alone is no longer justified; reputation builds per file hash and per certificate (<a href="https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation">SmartScreen reputation</a>, 2026-08-17).</li>
+<li><b>SignPath Foundation</b>: free for OSS that is released, maintained, OSI-licensed, built automatically and documented. The certificate names SignPath Foundation, not you (<a href="https://signpath.org/terms">terms</a>). Apply after v0.x has real releases.</li>
+<li>cosign or Sigstore proves the build origin but does nothing for Windows trust. The attestations above cover the same need.</li>
+</ul></td></tr>
+<tr><td>Channels</td><td>winget validation does not require signing, but it rejects redirecting URLs, and AV flags on unsigned Go binaries are a real risk (<a href="https://learn.microsoft.com/en-us/windows/package-manager/package/repository">winget repository</a>, 2026-07-14). So winget and an own Scoop bucket come after signing. Linux: deb/rpm via nfpm and a Homebrew tap only if people ask. Skip <code>go install</code> as the main route (it builds from source, so there is no checksum of the binary), and skip npm wrappers (a second supply chain).</td></tr>
+<tr><td>Corporate</td><td>App Control for Business is Microsoft's security feature; AppLocker gets no new features (<a href="https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/appcontrol-and-applocker-overview">overview</a>, 2026-03-29). Unsigned binaries in user-writable folders are the first thing such policies block. Smart App Control also blocks unknown unsigned code on clean Windows 11 installs, but it is switched off on managed devices (<a href="https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/appcontrol">App Control</a>, 2026-08-18). The PowerShell fallback is weaker than it looks: App Control also puts scripts into Constrained Language Mode, and a script can't unblock a blocked exe. Add an <b>"export for IT" output</b> instead: a managed-settings snippet, a Codex <code>requirements.toml</code> fragment and the file list, which an admin can deploy to a protected folder. Signing alone doesn't grant corporate permission either. An allow rule for agtk also allows its installer subcommands, so a separate minimal hook-runner binary may be easier for IT to approve (Codex's suggestion; consider for v1.0).</td></tr>
+<tr><td>Risks</td><td>Without signing, a share of corporate users can't run it at all. Practitioner reports on signing from the last 60 days: none found (HN had nothing on-topic; the Reddit archive refused queries without a subreddit).</td></tr>
+</table></div>
+
+<div class="card"><h3>7 &middot; Scope: Claude Code and Codex only in v1 <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Choice</td><td>v1 writes for Claude Code and Codex only. Write AGENTS.md as the single instruction file, because it reaches more tools for free:</td></tr>
+<tr><td>Who reads what</td><td>
+<div class="wrap"><table>
+<tr><th>Agent</th><th>AGENTS.md</th><th>Skills (SKILL.md)</th><th>Source</th></tr>
+<tr><td>Claude Code</td><td>project AGENTS.md, but only when there is no CLAUDE.md (v2.1.277+); user level via a CLAUDE.md that imports it</td><td><code>~/.claude/skills</code></td><td><a href="https://code.claude.com/docs/en/memory">memory</a></td></tr>
+<tr><td>Codex</td><td>global <code>~/.codex/AGENTS.md</code> + project chain, 32 KiB</td><td><code>~/.agents/skills</code></td><td><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md</a></td></tr>
+<tr><td>Copilot CLI</td><td>project root and cwd; user file is <code>~/.copilot/copilot-instructions.md</code></td><td>not confirmed</td><td><a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions">GitHub docs</a></td></tr>
+<tr><td>OpenCode</td><td>project + <code>~/.config/opencode/AGENTS.md</code></td><td>reads <code>~/.claude/skills</code></td><td><a href="https://opencode.ai/docs/rules/">rules</a> (2026-11-04)</td></tr>
+<tr><td>Cursor</td><td>project only; user rules live in the app</td><td>not confirmed</td><td><a href="https://cursor.com/docs/context/rules">rules</a></td></tr>
+<tr><td>Gemini CLI</td><td>only with <code>context.fileName</code> set; default GEMINI.md</td><td>not confirmed</td><td><a href="https://geminicli.com/docs/cli/gemini-md/">GEMINI.md</a> (2026-06-18)</td></tr>
+</table></div></td></tr>
+<tr><td>Next</td><td>OpenCode is the cheapest third target: it already reads <code>~/.claude/skills</code> and a user-level AGENTS.md. Copilot CLI after that. Hooks and MCP formats differ per tool, so each new agent means a fresh read.</td></tr>
+</table></div>
+
+<div class="card"><h3>8 &middot; Old-school UX done right <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Keys</td><td>Enter = continue/confirm, Space = toggle, arrows = move, Tab/Shift-Tab = next/previous field, Esc = back, F3 = exit (confirm first; MS-DOS 6 asked twice), F1 = help, which here also means "why this item". Hotkey letters in lists, whiptail-style. Sources: <a href="https://man.freebsd.org/cgi/man.cgi?manpath=freebsd-ports&amp;query=whiptail&amp;sektion=1">whiptail(1)</a>, <a href="https://www.debian.org/releases/bookworm/amd64/ch05s02.en.html">Debian installer</a>, <a href="https://docs.revenera.com/installshield/helplibrary/SteUINav.htm">InstallShield navigation</a>.</td></tr>
+<tr><td>Flow</td><td>Welcome &rarr; scan result &rarr; questions &rarr; recommendations &rarr; <b>summary with the file diff</b> &rarr; progress &rarr; done with "what's left for you" (e.g. "open Codex, run /hooks"). Cancel is possible everywhere except during the write; InstallShield's rule of no Cancel on the final page applies.</td></tr>
+<tr><td>Drawing</td><td>16 colours only (blue 1 background, white/grey text, yellow titles, a grey key bar). <b>ASCII fallback when the locale isn't UTF-8 or the console codepage isn't 65001</b>, plus <code>--ascii</code>. The Go prototype shows tcell prints <code>?</code> otherwise. The Linux text console may lack double-line glyphs, so use single lines when <code>TERM=linux</code>. Honour <a href="https://no-color.org/">NO_COLOR</a> (monochrome with reverse video for the selection).</td></tr>
+<tr><td>Size</td><td>80&times;25 minimum. Below that, show a "please enlarge the window" screen; never clip silently (see the Rust capture).</td></tr>
+<tr><td>Accessibility</td><td>Full-screen TUIs work poorly with screen readers: constant redraws, cursor tracking, NVDA crashes on large re-renders (<a href="https://xogium.me/the-text-mode-lie-why-modern-tuis-are-a-nightmare-for-accessibility">"The text mode lie"</a>, 2026-01-05). So ship <code>--plain</code> (numbered questions, Debian-installer text-frontend style: Enter accepts the default, <code>&lt;</code> goes back) and <code>--answers file.yaml</code>. Both use the same engine and also serve CI.</td></tr>
+</table></div>
+
+<div class="card"><h3>9 &middot; Licensing of vendored skills <span class="tag add">YES</span></h3>
+<table class="kv">
+<tr><td>Finding</td><td>All three upstreams are MIT: mattpocock/skills (&copy; 2026 Matt Pocock), K-Dense-AI/scientific-agent-skills (&copy; 2025 K-Dense Inc.), sivaprasadreddy/sivalabs-agent-skills (&copy; 2026 K Siva Prasad Reddy). No skill folder carries its own differing licence; paper-lookup's frontmatter says <code>license: MIT</code>. Redistribution in a public repo and inside the binary is allowed.</td></tr>
+<tr><td>Required</td><td>The copyright line and the MIT permission text must travel with every copy, binary included. Do this with a <code>THIRD_PARTY_NOTICES</code> file in each release archive, generated from <code>packs/*/skills/_licenses</code>, plus an "About &rarr; Licences" screen. Marking modifications isn't required by MIT; keep <code>packs/MODIFICATIONS.md</code> anyway. Don't imply endorsement by the authors.</td></tr>
+<tr><td>Other</td><td>Context7 (MIT) and pyright are only referenced, so nothing to attribute. The skills.sh terms say they don't own or relicense skills; rights come from each repo (<a href="https://skills.sh/terms">terms</a>). The agentskills.io spec is Apache-2.0 and is a format, not content.</td></tr>
+</table></div>
+
+<h2 id="compare">10 &middot; Comparison with docs/wizard-design.md</h2>
+<div class="card">
+<p><b>Agree</b> (the draft already has it, often better than my own first answer):</p>
+<ul>
+<li>Go, one static binary per OS and arch, tcell, no runtime on the target.</li>
+<li>Hooks as subcommands of the binary. This removes the Node dependency and was not in my answer.</li>
+<li>The six-step flow with a summary of changed files, backup, <code>undo</code> and <code>status</code>.</li>
+<li>Catalog of one YAML file per item with <code>recommend_when</code>/<code>never_when</code> and reasons, and a token meter.</li>
+<li>Only the profile (answers) is saved. Personal setup becomes a private profile, and the work zip becomes unnecessary.</li>
+</ul>
+<p><b>Differ, and what to change:</b></p>
+<ol>
+<li><b>Codex <code>requirements.toml</code> on Windows</b>: the draft skips it as unconfirmed. It is confirmed as <code>%ProgramData%\OpenAI\Codex\requirements.toml</code>. Add it, and read <code>[hooks] allow_managed_hooks_only</code>, <code>features.plugins</code>, <code>[marketplaces]</code> and <code>mcp_servers</code>.</li>
+<li><b>Claude Code registry policy</b> (<code>HKLM</code>/<code>HKCU\SOFTWARE\Policies\ClaudeCode</code>, value <code>Settings</code>) and the <code>managed-settings.d\</code> drop-ins are missing from the scan. The draft's "<code>%ProgramData%</code>" entry for Claude Code is the legacy path that is no longer read.</li>
+<li><b>Network reachability check</b> (step 2) conflicts with "no network calls except the release and chosen MCP servers", and on corporate networks it can trip proxy alerts. Drop it, or make it an explicit opt-in button.</li>
+<li><b>Blocked binary means no guard.</b> The draft doesn't test whether <code>agtk.exe</code> can run from <code>~/.agtk</code> before writing hooks that call it. A hook that can't start lets the call through by default. Add the run probe to the tier decision, write <code>"onFailure": "block"</code>, and add an "export for IT" output next to the PowerShell fallback. The same check applies to today's Node-based install: if <code>node</code> goes missing, the git guard is probably off, not fail-closed as the add-ons report says. I did not test this live.</li>
+<li><b>ASCII fallback</b> is promised, but tcell won't do it for double lines (prototype: <code>?</code>). Implement detection (UTF-8 locale or codepage 65001), <code>--ascii</code>, and single lines on <code>TERM=linux</code>. Also add a "too small" screen.</li>
+<li><b>Accessibility and CI</b>: add <code>--plain</code> and <code>--answers</code>. The draft has <code>apply --profile</code>, which covers re-runs but not a first run without the TUI.</li>
+<li><b>Rules as structured YAML, "why" from evaluation</b>: the catalog already uses a text language (<code>stacks contains python and node</code>, <code>use != personal and not allow_external_mcp</code>). Switch to <code>all/any/not</code> conditions before the catalog grows, with explicit "unknown" semantics. Generate the F1 explanation from the evaluation trace and keep the <code>why:</code> sentence as a summary. Add a JSON Schema for catalog files in CI, and fail on unknown fact names.</li>
+<li><b>Merging</b>: add the previous written value to <code>state.json</code> for three-way conflict detection, ask the user to close the agents before writing in v0.1, and use Windows-safe atomic replace.</li>
+<li><b>Release trust</b>: the draft says "checksums". Add build attestations, immutable releases, an SBOM, no <code>curl | sh</code>, and a signing plan (SignPath Foundation; Artifact Signing is not open to you as an individual). The draft's GUI note "Fyne or a native Windows shell": I'd add "or any shell over <code>plan --json</code>" to keep the choice open.</li>
+</ol>
+<p><b>Already built in phase 1</b> (no change needed from this research): settings edited with key order kept and written as UTF-8, state in <code>~/.agtk</code>, ordinal file sort for pin hashes.</p>
+</div>
+
+<h2>Rejected options</h2>
+<div class="card"><ul>
+<li><b>Fork rulesync, ruler, vercel skills or claude-code-templates</b>: Node runtime, no scan or questionnaire, merge behaviour unknown.</li>
+<li><b>chezmoi as the engine</b>: built for personal dotfiles, not a curated catalog with reasons.</li>
+<li><b>winget configure / DSC as the output format</b>: Windows only.</li>
+<li><b>C++ magiblot/tvision</b>: the most authentic Turbo Vision look, but no real releases (latest r586 from 2020), licence shows as NOASSERTION, and a C++/CMake build for one maintainer.</li>
+<li><b>Free Pascal Free Vision</b>: Unicode support exists since 2022, but the ecosystem is too small for scan, TOML and JSON libraries.</li>
+<li><b>Python Textual</b>: no DOS look by default, and bundles of 100+ MB with slow start; it also needs a Python bundle on locked machines.</li>
+<li><b>cursive (Rust)</b>: closer to dialog-style widgets than ratatui, but less active (last release 2025-10).</li>
+<li><b>OPA/Rego, CEL, JSONLogic for rules</b>: too heavy, or unreadable, for about a dozen conditions.</li>
+<li><b>Azure Artifact Signing now; buying an EV certificate</b>: not available to an individual in Germany; EV no longer helps with SmartScreen.</li>
+<li><b>curl | sh / irm | iex installer at v0.1</b>: partial-download and trust problems, and corporate EDR flags it.</li>
+<li><b>Auto self-update</b>: corporate IT dislikes binaries that replace themselves; notify only.</li>
+<li><b>Gemini CLI, Cursor, Copilot CLI support in v1</b>: different file locations and formats, each needs its own read; AGENTS.md already reaches most of them.</li>
+</ul></div>
+
+<h2>Codex's second opinion</h2>
+<div class="card">
+<p><code>codex --profile deep exec --sandbox read-only</code>, given the shortlist and my reasoning (prompt and full answer in <code>_scratch/wizard-proto-2026-11-04/codex-prompt.md</code> and <code>codex-answer.md</code>).</p>
+<p><b>Agrees</b>: Go for this scope (assuming similar fluency); building your own; two agents in v1; MIT redistribution with notices; plain mode.</p>
+<p><b>Disagrees or adds, and what I did:</b></p>
+<ul>
+<li><b>Hook failure lets the action through</b> unless <code>onFailure: "block"</code> is set (v2.1.295+). <span class="keep">Verified, adopted</span> (items 5, 10). This is the most important correction in this report.</li>
+<li><b><code>allow_managed_hooks_only</code> is top-level</b> in <code>requirements.toml</code>, not under <code>[hooks]</code>. <span class="keep">Verified, corrected</span> (item 3).</li>
+<li><b>Don't invent a text rule language</b>; use structured all/any/not with explicit unknowns. <span class="keep">Adopted</span> (item 4).</li>
+<li><b>Merging is the hardest part</b>: hashes detect divergence but can't reconcile it; do three-way comparison; require agents closed; <code>os.Rename</code> isn't atomic on Windows; journal partial runs; validate imported plans. <span class="keep">Adopted</span> (item 5).</li>
+<li><b>Policy scan can't certify permission</b>: report allowed/blocked/unknown with provenance; cloud and remote settings are invisible. <span class="keep">Adopted</span> (item 3).</li>
+<li><b>"Nothing combines these" is too strong</b>: AgentDeck and ai-agent-rules. <span class="keep">Checked, added</span> (item 1). They have 2 and 10 stars, so not a fork base, but worth reading.</li>
+<li><b>Benchmarks are overweighted</b>: Rust's size and .NET's start time hardly matter for an occasional installer; MSVC is a maintainer cost, not a user cost. <span class="ask">Partly agree.</span> The decision still lands on Go, for the cross-compiling, tcell's terminfo handling and one-person maintainability, not for milliseconds. Version the JSON protocol, including progress, cancellation and errors.</li>
+<li><b>Replace "any Linux" with a tested support matrix.</b> <span class="keep">Agree</span>: Ubuntu LTS, Debian, Fedora, Alpine (musl) in CI containers.</li>
+<li><b>PowerShell fallback and unsigned hooks are major weaknesses</b>; offer an IT export, maybe a minimal hook runner. <span class="keep">Adopted</span> as items 6 and 10 (the hook runner as "consider").</li>
+<li><b>Privacy promise must be narrower</b>: backups and plans can contain existing paths or secrets. <span class="keep">Agree</span>; the wizard should say so and offer to delete backups.</li>
+<li><b>Testing gaps</b>: emulating <code>TERM=linux</code> in tmux isn't a real Linux console; NVDA needs a real test; ASCII fallback must cover selection marks (&bull;, &#9745;) too. <span class="keep">Agree</span>; listed under "could not check".</li>
+<li><b>AGENTS.md in Claude Code</b>: an ancestor <code>CLAUDE.local.md</code> also suppresses the fallback, so keep the explicit <code>@AGENTS.md</code> import the toolkit uses today. <span class="keep">Agree</span> (not verified).</li>
+</ul>
+</div>
+
+<h2>What I could not check</h2>
+<div class="card"><ul>
+<li><b>Windows Terminal pixel screenshots</b>: skipped after my first window capture grabbed your screen during a game. The conhost captures are exact cell dumps, and WT draws through the same console API (ConPTY), so I expect no surprises. The harness <code>_scratch/wizard-proto-2026-11-04/shot.ps1</code> can take real screenshots when you're not using the PC.</li>
+<li><b>Resize in conhost</b>: my capture tool's resize didn't take effect (the buffer stayed 100&times;30 for all three), so resize is only verified in WSL/tmux.</li>
+<li><b>.NET key handling</b>: keys sent to the console had no effect in conhost and WSL. Probably my focus setup; not investigated further, because .NET was already behind on size and start time.</li>
+<li>Old conhost with <b>raster fonts</b>, PuTTY/SSH, and a real Linux virtual console (TERM=linux was emulated in tmux).</li>
+<li>Merge versus overwrite behaviour of rulesync, ruler, vercel skills and claude-code-templates (source not read).</li>
+<li>Codex <code>managed_config.toml</code> paths; whether a standard user can read AppLocker/App Control policies; the default AppLocker rules for <code>%LOCALAPPDATA%</code>.</li>
+<li>tailscale/hujson and creachadair/tomledit round-trip quality (choose after a golden test); renameio replace semantics on Windows.</li>
+<li>SignPath Foundation's product page (fetch failed); Scoop Extras rules (404); OV/EV certificate prices.</li>
+<li>Practitioner reports: HN via Algolia worked, but most topics had few or no posts in the 60-day window. The Reddit archive (Arctic Shift) refused queries without a subreddit or author, so Reddit is thin. X needs your login.</li>
+<li>No screen-reader test (NVDA) of any prototype. Whether today's Node git-guard fails open when <code>node</code> is missing was not re-tested live.</li>
+<li>Bubble Tea and cursive were not prototyped; Terminal.Gui NativeAOT was not built (needs MSVC).</li>
+</ul></div>
+
+<p class="meta">Prototypes, captures and scripts: <code>C:\Users\walbe\Code\_scratch\wizard-proto-2026-11-04</code> (<code>go-tview</code>, <code>rust-ratatui</code>, <code>dotnet-tgui</code>, <code>capcon</code> = headless conhost capture, <code>wsl-test.sh</code>, <code>shots/</code>). Toolchains for the prototypes live in that folder and in <code>~/wizard-proto-*</code> inside WSL; delete both folders to remove them.</p>
+</main>
+</html>
