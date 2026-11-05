@@ -4,7 +4,6 @@ go 1.27.0
 
 require (
 	github.com/gdamore/tcell/v2 v2.13.10
-	github.com/rivo/tview v0.42.0
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.37.0

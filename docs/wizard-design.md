@@ -182,25 +182,37 @@ The current PowerShell installer keeps working until phase 1 replaces it.
 ### Phase 3 (wizard) as built (2026-11-05), ahead of phase 2
 
 - `internal/wizard` holds the questions, the defaults from the scan, the item choices, the
-  token meter and the profile. `internal/tui` (tview, widgets behind small helpers) and
+  token meter and the profile. `internal/tui` (plain tcell since the redesign below) and
   `internal/plain` (`--plain`, numbered prompts, `<` back) both drive it. `--answers file`
   takes the profile.yaml format and installs without questions. When stdin or stdout is not
   a terminal, the wizard uses plain mode.
 - The engine has a dry run: `install.Plan` returns every path it would create or change and
   every command it would run, and the review screen lists them before anything is written.
-- Display: ASCII frames and marks with `--ascii` or when UTF-8 is not available, single lines
-  on `TERM=linux`, and no colour with `NO_COLOR` (reverse video for the selection). Below
-  80x25 a notice offers plain mode.
+- Display: ASCII frames, art and marks with `--ascii` or when UTF-8 is not available, and no
+  colour with `NO_COLOR` (reverse video, bold and dim only). Below 80x25 a notice offers plain
+  mode.
   - **Deviation:** on Windows the wizard switches the console to codepage 65001 while it runs
     and restores the old one afterwards. Detection alone would give ASCII frames on most
     Windows consoles (437/850 by default). ASCII is used only if the switch fails.
 - After the screen closes, the install log stays on the terminal.
-- Design pass (2026-11-05): a step strip under the header, a drop shadow, colour by role
-  (yellow prompts, grey for off and later steps, green/yellow/cyan for create/change/run,
-  red for errors), a description panel under the item list instead of cut-off text, a
-  selection bar only on the focused list, a `|/-\` spinner while planning and installing, and
-  a result screen with what is left to do above the log. Colours are checked per role in
-  the simulation tests.
+- Redesign (2026-11-05), after the user's references (pyTermTk, awesome-tuis; terminaltrove
+  refused automated reads). The blue screen and colour roles are gone:
+  - Layout after Turbo Vision and microsoft/edit: a reverse-video title bar (F1 Help, F10
+    Quit), a step list on the left as classic installers have (done steps ticked and
+    clickable), the current step in a double-line dialog with a `░` shadow, and
+    `[ < Back  Esc ]` / `[ Next >  Enter ]` buttons that show their keys. A key bar sits at
+    the bottom.
+  - Pixel art after pyTermTk: a half-block logo, and a mascot whose face follows the state
+    (thinking, working, happy, oops) and who asks each question in a speech bubble. One
+    question per step, as in gum.
+  - Colour: the terminal's own. Reverse video marks the cursor, bold and dim do the rest,
+    and one soft accent is used only on the logo, mascot and spinner. Tests check that
+    there is no background colour and exactly one accent.
+  - Keys: arrows or j/k, Space ticks, Enter chooses and goes on, Esc/Left/Backspace goes
+    back, 1-9 picks, I shows item details, F1/? help, F10/q/Ctrl-C quit with a Y/N
+    confirmation. The mouse clicks answers, buttons and done steps, and the wheel scrolls.
+  - tview was replaced by plain tcell (the research allowed this); the drawing is
+    `internal/tui/draw.go`.
 - **Not yet:**
   - The model-access, autonomy, guardrail and budget questions are not asked, because no
     catalog rule uses them yet.

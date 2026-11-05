@@ -37,18 +37,19 @@ func start(t *testing.T, w, h int, d Display) *harness {
 		{Name: "claude", Fact: "claude_code", Version: "2.1.318"},
 		{Name: "codex", Fact: "codex", Version: "0.166.0"},
 		{Name: "node", Fact: "node", Version: "24.19.0"},
+		{Name: "docker", Fact: "docker"},
 	}}
 	sim := tcell.NewSimulationScreen("UTF-8")
-	if err := sim.Init(); err != nil {
-		t.Fatal(err)
-	}
 	hs := &harness{t: t, sim: sim, done: make(chan Result, 1)}
 	cfg := Config{Version: "test", Display: d, Home: `C:\Users\x`, Screen: sim,
 		Plan: func(p *profile.Profile) ([]install.Change, error) {
-			return []install.Change{{Action: "create", What: `C:\Users\x\.codex\AGENTS.md`}, {Action: "run", What: "npm install -g pyright@1.1.414"}}, nil
+			return []install.Change{{Action: "create", What: `C:\Users\x\.codex\AGENTS.md`}, {Action: "change", What: `C:\Users\x\.claude\settings.json`},
+				{Action: "run", What: "npm install -g pyright@1.1.414"}}, nil
 		},
 		Apply: func(p *profile.Profile, save bool, out io.Writer) error {
 			hs.saved, hs.items = save, p.Items
+			fmt.Fprintln(out, `Backup: C:\Users\x\.agtk\backups\1`)
+			fmt.Fprintln(out, "To do: open Codex and run /hooks")
 			fmt.Fprintln(out, "Done (tier A).")
 			return nil
 		}}
@@ -57,7 +58,6 @@ func start(t *testing.T, w, h int, d Display) *harness {
 		hs.err = err
 		hs.done <- r
 	}()
-	// The size takes effect once the running app sees a resize event.
 	time.Sleep(50 * time.Millisecond)
 	sim.SetSize(w, h)
 	sim.PostEvent(tcell.NewEventResize(w, h))
@@ -108,43 +108,53 @@ func (h *harness) finish() Result {
 }
 
 func TestWizardWalkthrough(t *testing.T) {
-	h := start(t, 80, 25, Display{Lines: "double", Color: true})
-	h.waitFor("Step 1 of 6: Welcome")
-	h.waitFor("╔")
+	h := start(t, 80, 25, Display{Lines: "unicode", Color: true})
+	h.waitFor("▄▀█ █▀▀ ▀█▀ █▄▀")
+	h.waitFor("hi! i had a quick look")
+	h.waitFor("claude 2.1.318, codex 0.166.0")
+	h.waitFor("Missing   docker")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Step 2 of 6: Scan")
-	h.waitFor("claude    2.1.318")
+	h.waitFor("who's this computer for?")
+	h.waitFor("1  ● Personal")
+	h.rune('2') // number keys choose directly
+	h.waitFor("2  ● Corporate")
+	h.rune('1')
+	h.waitFor("1  ● Personal")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Who is this machine for?")
-	h.waitFor("(•) Personal")
+	h.waitFor("which agent tools do you use?")
+	h.waitFor("✓ Who it's for")
 	h.waitFor("found: 0.166.0")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Step 4 of 6")
+	h.waitFor("what do you code in?")
 	h.key(tcell.KeyEscape) // back works
-	h.waitFor("Step 3 of 6")
+	h.waitFor("which agent tools do you use?")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Step 4 of 6")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Step 5 of 6: Recommended setup")
-	h.waitFor("[X] codex-rules")
-	h.waitFor("Always loaded: ~")
-	h.key(tcell.KeyF1)
-	h.waitFor("Why codex-rules?")
+	h.waitFor("and what kind of work?")
+	h.key(tcell.KeyEnter)
+	h.waitFor("here's what i'd set up")
+	h.waitFor("[x] codex-rules")
+	h.waitFor("Context █")
+	h.rune('i')
 	h.waitFor("recommend when always")
-	h.key(tcell.KeyEscape)
-	h.waitFor("[X] codex-rules")
-	h.rune(' ') // switch codex-rules off
-	h.waitFor("[ ] codex-rules")
-	h.key(tcell.KeyEnter)
-	h.waitFor("Step 6 of 6: Review and install")
-	h.waitFor("create  ~/.codex/AGENTS.md")
-	h.waitFor("run     npm install -g pyright")
-	h.waitFor("[X] Save my answers")
+	h.rune('x') // any key closes
 	h.rune(' ')
-	h.waitFor("[ ] Save my answers")
+	h.waitFor("[ ] codex-rules")
+	h.rune('?')
+	h.waitFor("choose and go on")
 	h.key(tcell.KeyEnter)
-	h.waitFor("Setup complete")
-	h.waitFor("Done (tier A).")
+	h.key(tcell.KeyEnter)
+	h.waitFor("last look")
+	h.waitFor("1 new, 1 changed, 1 commands")
+	h.waitFor("create ~/.codex/AGENTS.md")
+	h.waitFor("[x] Save answers to")
+	h.rune(' ')
+	h.waitFor("[ ] Save answers to")
+	h.key(tcell.KeyEnter)
+	h.waitFor("Setup complete.")
+	h.waitFor("To do   open Codex and run /hooks")
+	h.waitFor("Backup  ~/.agtk/backups/1")
+	h.waitFor("all set!")
 	h.key(tcell.KeyEnter)
 	r := h.finish()
 	if h.err != nil || !r.Installed || !strings.Contains(r.Log, "Done (tier A).") {
@@ -159,8 +169,24 @@ func TestWizardWalkthrough(t *testing.T) {
 	}
 }
 
+func TestQuitAsksFirst(t *testing.T) {
+	h := start(t, 80, 25, Display{Lines: "unicode", Color: true})
+	h.waitFor("hi! i had a quick look")
+	h.rune('q')
+	h.waitFor("Nothing has been written yet.")
+	h.rune('n')
+	h.key(tcell.KeyEnter)
+	h.waitFor("who's this computer for?")
+	h.key(tcell.KeyF10)
+	h.waitFor("Quit setup?")
+	h.rune('y')
+	if r := h.finish(); r.Installed || h.err != nil {
+		t.Fatalf("quit must not install: %+v %v", r, h.err)
+	}
+}
+
 func TestTooSmallOffersPlainMode(t *testing.T) {
-	h := start(t, 60, 20, Display{Lines: "double", Color: true})
+	h := start(t, 60, 20, Display{Lines: "unicode", Color: true})
 	h.waitFor("setup needs at least 80x25")
 	h.rune('p')
 	h.finish()
@@ -171,25 +197,49 @@ func TestTooSmallOffersPlainMode(t *testing.T) {
 
 func TestASCIIAndNoColour(t *testing.T) {
 	h := start(t, 80, 25, Display{Lines: "ascii", Color: false})
-	h.waitFor("- Step 1 of 6: Welcome -")
-	for _, r := range "═║╔╗╚╝•█░" {
-		if strings.ContainsRune(h.screen(), r) {
+	h.waitFor("( o o )")
+	h.key(tcell.KeyEnter)
+	h.waitFor("1  (*) Personal")
+	scr := h.screen()
+	for _, r := range "▄▀█▸●╭╮╰╯╔╗╚╝═║░◂✓" {
+		if strings.ContainsRune(scr, r) {
 			t.Errorf("ASCII mode drew %q", r)
 		}
 	}
-	h.key(tcell.KeyEnter)
-	h.key(tcell.KeyEnter)
-	h.waitFor("(*) Personal")
 	cells, _, _ := h.sim.GetContents()
 	for _, c := range cells {
-		if fg, bg, _ := c.Style.Decompose(); fg == tcell.ColorNavy || bg == tcell.ColorNavy {
-			t.Fatal("NO_COLOR mode used colour")
+		if fg, bg, _ := c.Style.Decompose(); fg != tcell.ColorDefault || bg != tcell.ColorDefault {
+			t.Fatalf("NO_COLOR mode used colour %v/%v", fg, bg)
 		}
 	}
-	h.key(tcell.KeyF3)
+	h.rune('q')
+	h.rune('y')
 	if r := h.finish(); r.Installed {
-		t.Error("F3 must not install")
+		t.Error("quit must not install")
 	}
+}
+
+func TestOneAccentColour(t *testing.T) {
+	h := start(t, 80, 25, Display{Lines: "unicode", Color: true})
+	h.key(tcell.KeyEnter)
+	h.waitFor("1  ● Personal")
+	colours := map[tcell.Color]bool{}
+	cells, _, _ := h.sim.GetContents()
+	for _, c := range cells {
+		fg, bg, _ := c.Style.Decompose()
+		if bg != tcell.ColorDefault {
+			t.Fatalf("background colour %v: the terminal's own background must stay", bg)
+		}
+		colours[fg] = true
+	}
+	delete(colours, tcell.ColorDefault)
+	delete(colours, tcell.ColorGray)
+	if len(colours) != 1 {
+		t.Errorf("want exactly one accent colour, got %v", colours)
+	}
+	h.rune('q')
+	h.rune('y')
+	h.finish()
 }
 
 // TestDumpScreens writes each screen as text when AGTK_DUMP names a file (for reviewing
@@ -199,29 +249,30 @@ func TestDumpScreens(t *testing.T) {
 	if path == "" {
 		t.Skip("set AGTK_DUMP=<file> to write the screens")
 	}
-	h := start(t, 80, 25, Display{Lines: "double", Color: true})
+	h := start(t, 80, 25, Display{Lines: "unicode", Color: true})
 	var b strings.Builder
 	shot := func(wait string) {
 		h.waitFor(wait)
-		time.Sleep(150 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		b.WriteString(h.screen() + "\n")
 	}
-	shot("Step 1 of 6")
+	shot("hi! i had")
 	h.key(tcell.KeyEnter)
-	shot("Step 2 of 6")
+	shot("who's this")
 	h.key(tcell.KeyEnter)
-	h.key(tcell.KeyDown)
-	h.rune(' ')
-	shot("outside services")
 	h.key(tcell.KeyEnter)
-	shot("Step 4 of 6")
 	h.key(tcell.KeyEnter)
-	shot("Step 5 of 6")
-	h.key(tcell.KeyF1)
-	shot("Why ")
-	h.key(tcell.KeyEscape)
+	shot("and what kind of work?")
 	h.key(tcell.KeyEnter)
-	shot("create  ~/.codex")
+	shot("here's what")
+	h.rune('i')
+	shot("recommend when")
+	h.rune('x')
+	h.rune('?')
+	shot("choose and go on")
+	h.rune('x')
+	h.key(tcell.KeyEnter)
+	shot("Save answers")
 	h.key(tcell.KeyEnter)
 	shot("Setup complete")
 	h.key(tcell.KeyEnter)
@@ -229,56 +280,35 @@ func TestDumpScreens(t *testing.T) {
 	os.WriteFile(path, []byte(b.String()), 0o644)
 }
 
-// styleAt returns the style of the first cell of s on the screen.
-func (h *harness) styleAt(s string) tcell.Style {
+// click presses and releases the left button on the first cell showing s.
+func (h *harness) click(s string) {
 	h.t.Helper()
-	cells, w, _ := h.sim.GetContents()
-	scr := h.screen()
-	lines := strings.Split(scr, "\n")
-	for y, l := range lines {
-		if x := strings.Index(l, s); x >= 0 {
-			col := len([]rune(l[:x]))
-			return cells[y*w+col].Style
+	h.waitFor(s)
+	for y, l := range strings.Split(h.screen(), "\n") {
+		if i := strings.Index(l, s); i >= 0 {
+			x := len([]rune(l[:i]))
+			h.sim.InjectMouse(x, y, tcell.Button1, tcell.ModNone)
+			h.sim.InjectMouse(x, y, tcell.ButtonNone, tcell.ModNone)
+			return
 		}
 	}
-	h.t.Fatalf("%q not on screen", s)
-	return tcell.StyleDefault
 }
 
-func TestColourRoles(t *testing.T) {
-	h := start(t, 80, 25, Display{Lines: "double", Color: true})
-	h.waitFor("Step 1 of 6")
-	if _, bg, _ := h.styleAt("1 Welcome").Decompose(); bg != tcell.ColorSilver {
-		t.Errorf("current step should be highlighted, bg %v", bg)
+func TestMouse(t *testing.T) {
+	h := start(t, 80, 25, Display{Lines: "unicode", Color: true})
+	h.click("Next >  Enter")
+	h.waitFor("who's this computer for?")
+	h.click("Corporate, with my own API key")
+	h.waitFor("3  ● Corporate, with my own API key")
+	h.click("✓ Welcome") // done steps in the sidebar take you back
+	h.waitFor("hi! i had a quick look")
+	h.click("F1 Help")
+	h.waitFor("choose and go on")
+	h.click("Keys") // any click closes help
+	h.click("F10 Quit")
+	h.waitFor("Quit setup?")
+	h.rune('y')
+	if r := h.finish(); r.Installed {
+		t.Error("quit must not install")
 	}
-	if fg, _, _ := h.styleAt("2 Scan").Decompose(); fg != tcell.ColorSilver {
-		t.Errorf("later steps should be grey, fg %v", fg)
-	}
-	h.key(tcell.KeyEnter)
-	h.waitFor("claude    2.1.318")
-	if fg, _, _ := h.styleAt("2.1.318").Decompose(); fg != tcell.ColorLime {
-		t.Errorf("found versions should be green, fg %v", fg)
-	}
-	h.key(tcell.KeyEnter)
-	h.key(tcell.KeyEnter)
-	h.key(tcell.KeyEnter)
-	h.waitFor("Step 5 of 6")
-	h.waitFor("[ ] paper-lookup")
-	if fg, _, _ := h.styleAt("[ ] paper-lookup").Decompose(); fg != tcell.ColorSilver {
-		t.Errorf("items that are off should be grey, fg %v", fg)
-	}
-	// The window casts a shadow: the cells right of its bottom-right corner are black.
-	h.waitFor("╝")
-	cells, w, _ := h.sim.GetContents()
-	lines := strings.Split(h.screen(), "\n")
-	for y, l := range lines {
-		if x := strings.Index(l, "╝"); x >= 0 {
-			col := len([]rune(l[:x]))
-			if _, bg, _ := cells[(y+1)*w+col].Style.Decompose(); bg != tcell.ColorBlack {
-				t.Errorf("no shadow below the window, bg %v", bg)
-			}
-		}
-	}
-	h.key(tcell.KeyF3)
-	h.finish()
 }
