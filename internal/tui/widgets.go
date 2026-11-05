@@ -15,9 +15,9 @@ func frame(title string, body tview.Primitive) *tview.Flex {
 	return f
 }
 
+// text is a wrapped text view; s may hold colour tags, so callers escape user content.
 func text(s string) *tview.TextView {
-	t := tview.NewTextView().SetText(s).SetWrap(true).SetWordWrap(true)
-	return t
+	return tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetWordWrap(true).SetText(s)
 }
 
 // choiceList is a list for a radio group or a checklist: rows are redrawn by fill, and
@@ -29,7 +29,7 @@ type choiceList struct {
 }
 
 func newChoiceList(d Display, fill func(*choiceList), toggle func(int)) *choiceList {
-	l := &choiceList{List: tview.NewList().ShowSecondaryText(false).SetHighlightFullLine(true), fill: fill, toggle: toggle}
+	l := &choiceList{List: tview.NewList().ShowSecondaryText(false).SetHighlightFullLine(true).SetSelectedFocusOnly(true), fill: fill, toggle: toggle}
 	bar := d.barStyle()
 	fg, bg, _ := bar.Decompose()
 	l.SetSelectedTextColor(fg).SetSelectedBackgroundColor(bg)
@@ -59,6 +59,9 @@ func (l *choiceList) redraw() {
 
 // add appends a row; text is escaped so marks like [X] are not read as style tags.
 func (l *choiceList) add(s string) { l.AddItem(tview.Escape(s), "", 0, nil) }
+
+// addTagged appends a row whose text already carries colour tags (content escaped).
+func (l *choiceList) addTagged(s string) { l.AddItem(s, "", 0, nil) }
 
 // keyBar is the bottom line with the key hints.
 func keyBar(d Display) *tview.TextView {

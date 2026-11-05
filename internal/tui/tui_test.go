@@ -113,7 +113,7 @@ func TestWizardWalkthrough(t *testing.T) {
 	h.waitFor("╔")
 	h.key(tcell.KeyEnter)
 	h.waitFor("Step 2 of 6: Scan")
-	h.waitFor("claude 2.1.318")
+	h.waitFor("claude    2.1.318")
 	h.key(tcell.KeyEnter)
 	h.waitFor("Who is this machine for?")
 	h.waitFor("(•) Personal")
@@ -190,4 +190,95 @@ func TestASCIIAndNoColour(t *testing.T) {
 	if r := h.finish(); r.Installed {
 		t.Error("F3 must not install")
 	}
+}
+
+// TestDumpScreens writes each screen as text when AGTK_DUMP names a file (for reviewing
+// the layout by eye); it is skipped otherwise.
+func TestDumpScreens(t *testing.T) {
+	path := os.Getenv("AGTK_DUMP")
+	if path == "" {
+		t.Skip("set AGTK_DUMP=<file> to write the screens")
+	}
+	h := start(t, 80, 25, Display{Lines: "double", Color: true})
+	var b strings.Builder
+	shot := func(wait string) {
+		h.waitFor(wait)
+		time.Sleep(150 * time.Millisecond)
+		b.WriteString(h.screen() + "\n")
+	}
+	shot("Step 1 of 6")
+	h.key(tcell.KeyEnter)
+	shot("Step 2 of 6")
+	h.key(tcell.KeyEnter)
+	h.key(tcell.KeyDown)
+	h.rune(' ')
+	shot("outside services")
+	h.key(tcell.KeyEnter)
+	shot("Step 4 of 6")
+	h.key(tcell.KeyEnter)
+	shot("Step 5 of 6")
+	h.key(tcell.KeyF1)
+	shot("Why ")
+	h.key(tcell.KeyEscape)
+	h.key(tcell.KeyEnter)
+	shot("create  ~/.codex")
+	h.key(tcell.KeyEnter)
+	shot("Setup complete")
+	h.key(tcell.KeyEnter)
+	h.finish()
+	os.WriteFile(path, []byte(b.String()), 0o644)
+}
+
+// styleAt returns the style of the first cell of s on the screen.
+func (h *harness) styleAt(s string) tcell.Style {
+	h.t.Helper()
+	cells, w, _ := h.sim.GetContents()
+	scr := h.screen()
+	lines := strings.Split(scr, "\n")
+	for y, l := range lines {
+		if x := strings.Index(l, s); x >= 0 {
+			col := len([]rune(l[:x]))
+			return cells[y*w+col].Style
+		}
+	}
+	h.t.Fatalf("%q not on screen", s)
+	return tcell.StyleDefault
+}
+
+func TestColourRoles(t *testing.T) {
+	h := start(t, 80, 25, Display{Lines: "double", Color: true})
+	h.waitFor("Step 1 of 6")
+	if _, bg, _ := h.styleAt("1 Welcome").Decompose(); bg != tcell.ColorSilver {
+		t.Errorf("current step should be highlighted, bg %v", bg)
+	}
+	if fg, _, _ := h.styleAt("2 Scan").Decompose(); fg != tcell.ColorSilver {
+		t.Errorf("later steps should be grey, fg %v", fg)
+	}
+	h.key(tcell.KeyEnter)
+	h.waitFor("claude    2.1.318")
+	if fg, _, _ := h.styleAt("2.1.318").Decompose(); fg != tcell.ColorLime {
+		t.Errorf("found versions should be green, fg %v", fg)
+	}
+	h.key(tcell.KeyEnter)
+	h.key(tcell.KeyEnter)
+	h.key(tcell.KeyEnter)
+	h.waitFor("Step 5 of 6")
+	h.waitFor("[ ] paper-lookup")
+	if fg, _, _ := h.styleAt("[ ] paper-lookup").Decompose(); fg != tcell.ColorSilver {
+		t.Errorf("items that are off should be grey, fg %v", fg)
+	}
+	// The window casts a shadow: the cells right of its bottom-right corner are black.
+	h.waitFor("╝")
+	cells, w, _ := h.sim.GetContents()
+	lines := strings.Split(h.screen(), "\n")
+	for y, l := range lines {
+		if x := strings.Index(l, "╝"); x >= 0 {
+			col := len([]rune(l[:x]))
+			if _, bg, _ := cells[(y+1)*w+col].Style.Decompose(); bg != tcell.ColorBlack {
+				t.Errorf("no shadow below the window, bg %v", bg)
+			}
+		}
+	}
+	h.key(tcell.KeyF3)
+	h.finish()
 }

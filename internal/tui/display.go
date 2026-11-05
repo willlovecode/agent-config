@@ -122,3 +122,58 @@ func (d Display) screenStyle() tcell.Style {
 	}
 	return tcell.StyleDefault
 }
+
+// Colour roles. On the blue screen: white for normal text, yellow for prompts and
+// emphasis, grey for things that are off or secondary, green/yellow/cyan for what an
+// action does, red for errors.
+const (
+	roleAccent = "yellow"
+	roleDim    = "silver"
+	roleOK     = "lime"
+	roleWarn   = "yellow"
+	roleInfo   = "aqua"
+	roleBad    = "red"
+)
+
+// tag colours s for a text with dynamic colours on; without colour it is only escaped.
+func (d Display) tag(role, s string) string {
+	if !d.Color {
+		return tview.Escape(s)
+	}
+	return "[" + role + "]" + tview.Escape(s) + "[-]"
+}
+
+// bold works with NO_COLOR too: it is emphasis, not colour.
+func (d Display) bold(s string) string { return "[::b]" + tview.Escape(s) + "[::-]" }
+
+// spinner frames: plain ASCII, as DOS installers drew them.
+var spinner = []string{"|", "/", "-", `\`}
+
+func (d Display) meterRole(used, max int) string {
+	switch {
+	case used > max:
+		return roleBad
+	case used*4 > max*3:
+		return roleWarn
+	}
+	return roleOK
+}
+
+// shadow darkens the cells right of and below a window, like DOS setup screens.
+func (d Display) shadow(s tcell.Screen, x, y, w, h int) {
+	if !d.Color {
+		return
+	}
+	style := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorGray)
+	put := func(cx, cy int) {
+		r, comb, _, _ := s.GetContent(cx, cy)
+		s.SetContent(cx, cy, r, comb, style)
+	}
+	for cy := y + 1; cy <= y+h; cy++ {
+		put(x+w, cy)
+		put(x+w+1, cy)
+	}
+	for cx := x + 2; cx < x+w; cx++ {
+		put(cx, y+h)
+	}
+}
