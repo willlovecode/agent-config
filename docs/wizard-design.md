@@ -179,6 +179,34 @@ The current PowerShell installer keeps working until phase 1 replaces it.
 - The skill pin hash now sorts files ordinally in both installers. The old culture sort
   in PowerShell gave a different hash for `spring-boot-skill`.
 
+### Phase 3 (wizard) as built (2026-11-05), ahead of phase 2
+
+- `internal/wizard` holds the questions, the defaults from the scan, the item choices, the
+  token meter and the profile. `internal/tui` (tview, widgets behind small helpers) and
+  `internal/plain` (`--plain`, numbered prompts, `<` back) both drive it. `--answers file`
+  takes the profile.yaml format and installs without questions. When stdin or stdout is not
+  a terminal, the wizard uses plain mode.
+- The engine has a dry run: `install.Plan` returns every path it would create or change and
+  every command it would run, and the review screen lists them before anything is written.
+- Display: ASCII frames and marks with `--ascii` or when UTF-8 is not available, single lines
+  on `TERM=linux`, and no colour with `NO_COLOR` (reverse video for the selection). Below
+  80x25 a notice offers plain mode.
+  - **Deviation:** on Windows the wizard switches the console to codepage 65001 while it runs
+    and restores the old one afterwards. Detection alone would give ASCII frames on most
+    Windows consoles (437/850 by default). ASCII is used only if the switch fails.
+- After the screen closes, the install log stays on the terminal.
+- **Not yet:**
+  - The model-access, autonomy, guardrail and budget questions are not asked, because no
+    catalog rule uses them yet.
+  - Project-scoped items (Spring Boot skill, stop checks) are left to profiles and
+    `agtk project add-checks`.
+  - F1 shows the rule text, not a per-clause trace; that comes with the structured rules.
+  - Colours are checked in tcell's simulation screen only. The headless conhost capture
+    shows no colour for the research prototype either.
+- The scan's version probes have side effects in an empty home: `claude --version` creates
+  `~/.claude.json` and `go version` writes Go telemetry counters. agtk itself writes nothing
+  before step 6.
+
 ## Changes from the 2026-11-05 research
 
 Approved items 1-9 of `reports/wizard-research-2026-11-05.html`. Each lands in the phase named.

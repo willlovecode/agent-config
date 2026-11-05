@@ -28,7 +28,7 @@ func AddChecks(home, project, command string, timeout int, w io.Writer) error {
 		return fmt.Errorf("run `agtk apply` first (agtk is not installed in %s)", StateDir(home))
 	}
 	a := &applier{Options: Options{Home: home, Out: w}, exe: st.Hook}
-	if a.s, err = newSession(StateDir(home)); err != nil {
+	if a.s, err = newSession(StateDir(home), false); err != nil {
 		return err
 	}
 	t := strconv.Itoa(timeout)

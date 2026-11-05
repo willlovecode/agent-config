@@ -27,6 +27,9 @@ func (a *applier) writeFile(p string, data []byte) error {
 	if err := a.s.remember(p, "file"); err != nil {
 		return err
 	}
+	if a.DryRun {
+		return nil
+	}
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
@@ -114,6 +117,9 @@ func (a *applier) link(linkPath, target string) error {
 	}
 	if err := a.s.remember(linkPath, "link"); err != nil {
 		return err
+	}
+	if a.DryRun {
+		return nil
 	}
 	return makeLink(linkPath, target)
 }

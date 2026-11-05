@@ -23,6 +23,8 @@ var version = "0.1.0-dev" // set by the release build
 
 const usage = `agtk %s: sets up Claude Code and Codex from a vetted catalog.
 
+  agtk [--ascii] [--plain]         the setup wizard (DOS-style screens; --plain asks line by line)
+  agtk --answers file [--save]     install from an answers file without questions (CI)
   agtk apply [--profile dir|file] [--tier A|B] [--skip-tools]
                                    install a saved profile (default: the last one applied)
   agtk undo                        restore the files the last apply or add-checks changed
@@ -34,13 +36,14 @@ const usage = `agtk %s: sets up Claude Code and Codex from a vetted catalog.
   agtk check [repo]                catalog, baseline, profile and budget checks (CI)
   agtk hook git-guard              (called by Claude Code and Codex)
   agtk hook stop-checks "<command>" [timeoutSeconds]
-
-The wizard (agtk with no arguments) comes in a later phase.
 `
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf(usage, version)
+	if len(os.Args) < 2 || (strings.HasPrefix(os.Args[1], "-") && !strings.Contains("-h --help --version", os.Args[1])) {
+		if err := runWizard(os.Args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "agtk:", err)
+			os.Exit(1)
+		}
 		return
 	}
 	var err error

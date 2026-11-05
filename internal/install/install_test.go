@@ -249,6 +249,37 @@ func TestReviewCases(t *testing.T) {
 	}
 }
 
+func TestPlanWritesNothing(t *testing.T) {
+	o, project := setup(t, "A", "claude_code, codex")
+	changes, err := Plan(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(o.Home)
+	if len(entries) != 0 {
+		t.Errorf("plan wrote into home: %v", entries)
+	}
+	if entries, _ := os.ReadDir(filepath.Join(project, ".git", "info")); len(entries) != 0 {
+		t.Errorf("plan wrote into the project: %v", entries)
+	}
+	var paths []string
+	for _, c := range changes {
+		paths = append(paths, c.Action+" "+c.What)
+	}
+	all := strings.Join(paths, "\n")
+	for _, want := range []string{"create " + filepath.Join(o.Home, ".codex", "AGENTS.md"), "settings.json", "skills" + string(filepath.Separator) + "tdd", "agtk.exe"} {
+		if !strings.Contains(all, want) {
+			t.Errorf("plan misses %q:\n%s", want, all)
+		}
+	}
+	if err := Apply(o); err != nil {
+		t.Fatal(err)
+	}
+	if changes, _ := Plan(o); len(changes) != 0 {
+		t.Errorf("plan after apply should be empty: %v", changes)
+	}
+}
+
 func TestSetTOMLTopKeys(t *testing.T) {
 	in := "# c\r\nmodel = \"a\"\r\n[t]\r\nmodel = \"keep\"\r\n"
 	out, changes := setTOMLTopKeys(in, []string{"model", "model_reasoning_effort"},

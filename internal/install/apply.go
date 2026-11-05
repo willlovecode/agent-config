@@ -30,6 +30,7 @@ type Options struct {
 	Tier      string // A or B
 	Exe       string // this binary; copied to the state folder so hooks have a stable path
 	SkipTools bool   // don't run claude/npm commands (MCP add, plugins, npm packages)
+	DryRun    bool   // change nothing; Plan reports what Apply would do
 	Version   string
 	Out       io.Writer
 }
@@ -70,29 +71,67 @@ func (a *applier) say(format string, args ...any) { fmt.Fprintf(a.Out, format+"\
 // Apply installs the profile. On error the files changed so far stay backed up, and
 // `agtk undo` restores them.
 func Apply(o Options) error {
+	o.DryRun = false
+	_, err := run(o)
+	return err
+}
+
+// Change is one thing Apply would do: create or change a path, or run a command.
+type Change struct {
+	Action string // create, change, run
+	What   string
+}
+
+// Plan reports what Apply would change, without writing anything.
+func Plan(o Options) ([]Change, error) {
+	o.DryRun = true
+	a, err := run(o)
+	if err != nil {
+		return nil, err
+	}
+	var out []Change
+	for _, e := range a.s.Entries {
+		switch {
+		case e.Kind == "external":
+			out = append(out, Change{"run", e.Describe})
+		case e.Existed:
+			out = append(out, Change{"change", e.Path})
+		default:
+			out = append(out, Change{"create", e.Path})
+		}
+	}
+	return out, nil
+}
+
+func run(o Options) (*applier, error) {
 	items, err := o.Profile.Resolve(o.Catalog)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	a := &applier{Options: o, codex: filepath.Join(o.Home, ".codex"), claude: filepath.Join(o.Home, ".claude")}
 	tools := o.Profile.Answers.Tools
 	a.useClaude = len(tools) == 0 || contains(tools, "claude_code")
 	a.useCodex = len(tools) == 0 || contains(tools, "codex")
-	if a.s, err = newSession(StateDir(o.Home)); err != nil {
-		return err
+	if a.s, err = newSession(StateDir(o.Home), o.DryRun); err != nil {
+		return nil, err
 	}
 	a.say("Profile: %s (%s)", o.Profile.Path, o.Profile.Description)
 	a.say("Tier: %s", o.Tier)
-	a.say("Backup: %s", a.s.dir)
+	if !o.DryRun {
+		a.say("Backup: %s", a.s.dir)
+	}
 
 	steps := []func([]*catalog.Item) error{a.binary, a.instructions, a.codexConfig, a.claudeConfig, a.skills, a.tools}
 	for _, step := range steps {
 		if err := step(items); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if err := a.projectSkills(); err != nil {
-		return err
+		return nil, err
+	}
+	if o.DryRun {
+		return a, nil
 	}
 	backup := a.s.finish()
 	if backup == "" {
@@ -104,13 +143,13 @@ func Apply(o Options) error {
 	st := State{Profile: o.Profile.Path, Tier: o.Tier, Version: o.Version, AppliedAt: time.Now().UTC(), Backup: backup, Hook: a.exe}
 	b, _ := json.MarshalIndent(st, "", "  ")
 	if err := os.WriteFile(filepath.Join(StateDir(o.Home), "state.json"), b, 0o644); err != nil {
-		return err
+		return nil, err
 	}
 	a.say("Done (tier %s). Start new Claude Code and Codex sessions to pick up the changes.", o.Tier)
 	for _, f := range a.followUps {
 		a.say("To do: %s", f)
 	}
-	return nil
+	return a, nil
 }
 
 func has(items []*catalog.Item, kind string) []*catalog.Item {
@@ -151,6 +190,9 @@ func (a *applier) binary(items []*catalog.Item) error {
 		return err
 	}
 	a.say("Binary\n  %s", a.exe)
+	if a.DryRun {
+		return nil
+	}
 	return replaceFile(a.exe, data, 0o755)
 }
 
@@ -414,17 +456,19 @@ func (a *applier) installSkills(list []*catalog.Item, root string) error {
 			if err := a.s.remember(dest, "dir"); err != nil {
 				return err
 			}
-			if err := os.RemoveAll(dest); err != nil {
-				return err
-			}
-			if err := copyFromAssets(a.Assets, it.Vendored, dest); err != nil {
-				return err
-			}
-			if err := adjustSkill(dest, it.ExplicitOnly); err != nil {
-				return err
-			}
-			if err := os.WriteFile(pin, []byte(want), 0o644); err != nil {
-				return err
+			if !a.DryRun {
+				if err := os.RemoveAll(dest); err != nil {
+					return err
+				}
+				if err := copyFromAssets(a.Assets, it.Vendored, dest); err != nil {
+					return err
+				}
+				if err := adjustSkill(dest, it.ExplicitOnly); err != nil {
+					return err
+				}
+				if err := os.WriteFile(pin, []byte(want), 0o644); err != nil {
+					return err
+				}
 			}
 			note := ""
 			if it.ExplicitOnly {
@@ -435,8 +479,10 @@ func (a *applier) installSkills(list []*catalog.Item, root string) error {
 		if toClaude && home == shared {
 			link := filepath.Join(claude, it.ID)
 			if !exists(link) {
-				if err := os.MkdirAll(claude, 0o755); err != nil {
-					return err
+				if !a.DryRun {
+					if err := os.MkdirAll(claude, 0o755); err != nil {
+						return err
+					}
 				}
 				if err := a.link(link, dest); err != nil {
 					return err
@@ -604,6 +650,17 @@ func (a *applier) run(name string, args ...string) (out string, ok bool, err err
 	return string(b), true, err
 }
 
+// change runs a command that changes another program's setup, and records it for the
+// backup (undo can't reverse it) or, in a dry run, only records it.
+func (a *applier) change(describe, name string, args ...string) error {
+	if !a.DryRun {
+		if out, _, err := a.run(name, args...); err != nil {
+			return fmt.Errorf("%s %s: %v %s", name, strings.Join(args, " "), err, out)
+		}
+	}
+	return a.s.external(describe)
+}
+
 func (a *applier) claudeMCP(it *catalog.Item) error {
 	if _, ok, err := a.run("claude", "mcp", "get", it.ID); !ok {
 		a.say("  Claude Code MCP: skipped %s (claude not run)", it.ID)
@@ -612,16 +669,13 @@ func (a *applier) claudeMCP(it *catalog.Item) error {
 		a.say("  Claude Code MCP: ok %s", it.ID)
 		return nil
 	}
-	if out, _, err := a.run("claude", "mcp", "add", "--scope", "user", "--transport", "http", it.ID, it.MCP.URL); err != nil {
-		return fmt.Errorf("claude mcp add %s: %v %s", it.ID, err, out)
-	}
 	a.say("  Claude Code MCP: added %s", it.ID)
-	return a.s.external("claude mcp add --scope user " + it.ID + " (remove with: claude mcp remove --scope user " + it.ID + ")")
+	return a.change("claude mcp add --scope user "+it.ID+" (remove with: claude mcp remove --scope user "+it.ID+")",
+		"claude", "mcp", "add", "--scope", "user", "--transport", "http", it.ID, it.MCP.URL)
 }
 
 func (a *applier) npmGlobal(pkg string) error {
-	at := strings.LastIndex(pkg, "@")
-	name := pkg[:at]
+	name := pkg[:strings.LastIndex(pkg, "@")]
 	out, ok, _ := a.run("npm", "ls", "-g", "--depth=0", name)
 	if !ok {
 		a.say("  npm: skipped %s (npm not run)", pkg)
@@ -631,11 +685,8 @@ func (a *applier) npmGlobal(pkg string) error {
 		a.say("  npm: ok %s", pkg)
 		return nil
 	}
-	if out, _, err := a.run("npm", "install", "-g", pkg, "--no-fund", "--no-audit"); err != nil {
-		return fmt.Errorf("npm install -g %s: %v %s", pkg, err, out)
-	}
 	a.say("  npm: installed %s", pkg)
-	return a.s.external("npm install -g " + pkg)
+	return a.change("npm install -g "+pkg, "npm", "install", "-g", pkg, "--no-fund", "--no-audit")
 }
 
 func (a *applier) claudePlugin(it *catalog.Item) error {
@@ -646,10 +697,8 @@ func (a *applier) claudePlugin(it *catalog.Item) error {
 		return nil
 	}
 	if !strings.Contains(out, mk) {
-		if out, _, err := a.run("claude", "plugin", "marketplace", "add", it.Plugin.Marketplace); err != nil {
-			return fmt.Errorf("claude plugin marketplace add: %v %s", err, out)
-		}
-		if err := a.s.external("claude plugin marketplace add " + it.Plugin.Marketplace); err != nil {
+		if err := a.change("claude plugin marketplace add "+it.Plugin.Marketplace,
+			"claude", "plugin", "marketplace", "add", it.Plugin.Marketplace); err != nil {
 			return err
 		}
 	}
@@ -657,9 +706,6 @@ func (a *applier) claudePlugin(it *catalog.Item) error {
 		a.say("  Claude plugin: ok %s", it.Plugin.ID)
 		return nil
 	}
-	if out, _, err := a.run("claude", "plugin", "install", it.Plugin.ID); err != nil {
-		return fmt.Errorf("claude plugin install %s: %v %s", it.Plugin.ID, err, out)
-	}
 	a.say("  Claude plugin: installed %s", it.Plugin.ID)
-	return a.s.external("claude plugin install " + it.Plugin.ID)
+	return a.change("claude plugin install "+it.Plugin.ID, "claude", "plugin", "install", it.Plugin.ID)
 }

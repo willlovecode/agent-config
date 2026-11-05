@@ -16,11 +16,11 @@ import (
 type Answers struct {
 	Use              string   `yaml:"use"` // personal, corporate_gateway, corporate_key
 	Tools            []string `yaml:"tools"`
-	Stacks           []string `yaml:"stacks"`
-	Work             []string `yaml:"work"`
-	Autonomy         string   `yaml:"autonomy"`
-	Budget           string   `yaml:"budget"`
-	AllowExternalMCP bool     `yaml:"allow_external_mcp"`
+	Stacks           []string `yaml:"stacks,omitempty"`
+	Work             []string `yaml:"work,omitempty"`
+	Autonomy         string   `yaml:"autonomy,omitempty"`
+	Budget           string   `yaml:"budget,omitempty"`
+	AllowExternalMCP bool     `yaml:"allow_external_mcp,omitempty"`
 }
 
 type ProjectItems struct {
@@ -32,11 +32,11 @@ type Profile struct {
 	Description         string         `yaml:"description"`
 	Answers             Answers        `yaml:"answers"`
 	Items               []string       `yaml:"items"`
-	ProjectItems        []ProjectItems `yaml:"project_items"`
-	Instructions        string         `yaml:"instructions"`          // personal AGENTS.md part, appended to the base
-	ClaudeModelSettings string         `yaml:"claude_model_settings"` // JSON merged into settings.json modelSettings
-	CodexDefaults       string         `yaml:"codex_defaults"`        // TOML whose model keys go into config.toml
-	CodexProfiles       []string       `yaml:"codex_profiles"`        // TOML files copied into ~/.codex
+	ProjectItems        []ProjectItems `yaml:"project_items,omitempty"`
+	Instructions        string         `yaml:"instructions,omitempty"`          // personal AGENTS.md part, appended to the base
+	ClaudeModelSettings string         `yaml:"claude_model_settings,omitempty"` // JSON merged into settings.json modelSettings
+	CodexDefaults       string         `yaml:"codex_defaults,omitempty"`        // TOML whose model keys go into config.toml
+	CodexProfiles       []string       `yaml:"codex_profiles,omitempty"`        // TOML files copied into ~/.codex
 
 	Dir  string `yaml:"-"` // folder holding the profile; side files resolve against it
 	Path string `yaml:"-"`

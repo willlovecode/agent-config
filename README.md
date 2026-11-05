@@ -3,7 +3,7 @@
 A portable toolkit for how coding agents (Claude Code and Codex) behave, on any
 machine. Design: `docs/portable-toolkit-design.md`.
 
-## agtk (phase 1: engine, no wizard yet)
+## agtk (engine and wizard)
 
 `agtk` is one Go binary that installs the same setup without Node or PowerShell
 (design: `docs/wizard-design.md`). The catalog (`catalog/*.yaml`) and vendored packs
@@ -11,6 +11,9 @@ are embedded; personal profiles are read from disk.
 
 ```powershell
 go build -o dist\agtk.exe .\cmd\agtk
+dist\agtk.exe                                 # the setup wizard (DOS-style screens)
+dist\agtk.exe --plain                         # the same questions line by line
+dist\agtk.exe --answers answers.yaml          # no questions (CI); same format as profile.yaml
 dist\agtk.exe apply --profile profiles\home   # later runs: dist\agtk.exe apply
 dist\agtk.exe status                          # what is installed, what is left to do
 dist\agtk.exe undo                            # restore the files the last apply changed

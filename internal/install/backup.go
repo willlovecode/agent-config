@@ -28,11 +28,15 @@ type entry struct {
 
 type session struct {
 	dir     string
+	dry     bool    // record what would change, write nothing
 	Entries []entry `json:"entries"`
 	seen    map[string]bool
 }
 
-func newSession(stateDir string) (*session, error) {
+func newSession(stateDir string, dry bool) (*session, error) {
+	if dry {
+		return &session{dry: true, seen: map[string]bool{}}, nil
+	}
 	base := filepath.Join(stateDir, "backups", time.Now().UTC().Format("20060102T150405.000Z"))
 	dir := base // UTC, so names sort in order across DST changes
 	for i := 2; exists(dir) || exists(dir+".undone"); i++ {
@@ -45,6 +49,9 @@ func newSession(stateDir string) (*session, error) {
 }
 
 func (s *session) save() error {
+	if s.dry {
+		return nil
+	}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return os.WriteFile(filepath.Join(s.dir, "manifest.json"), b, 0o644)
 }
@@ -62,6 +69,8 @@ func (s *session) remember(path, kind string) error {
 		if e.Target, err = os.Readlink(path); err != nil {
 			return err
 		}
+	} else if err == nil && s.dry {
+		e.Existed = true
 	} else if err == nil {
 		e.Existed = true
 		e.Backup = fmt.Sprintf("%03d-%s", len(s.Entries), filepath.Base(path))
@@ -81,6 +90,9 @@ func (s *session) remember(path, kind string) error {
 
 // finish drops the session folder when nothing was changed; it returns the folder kept, or "".
 func (s *session) finish() string {
+	if s.dry {
+		return ""
+	}
 	if len(s.Entries) == 0 {
 		os.Remove(s.dir)
 		return ""
