@@ -198,7 +198,7 @@ The current PowerShell installer keeps working until phase 1 replaces it.
 - Design pass (2026-11-05): a step strip under the header, a drop shadow, colour by role
   (yellow prompts, grey for off and later steps, green/yellow/cyan for create/change/run,
   red for errors), a description panel under the item list instead of cut-off text, a
-  selection bar only on the focused list, a `|/-` spinner while planning and installing, and
+  selection bar only on the focused list, a `|/-\` spinner while planning and installing, and
   a result screen with what is left to do above the log. Colours are checked per role in
   the simulation tests.
 - **Not yet:**
