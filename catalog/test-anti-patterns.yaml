@@ -1,0 +1,20 @@
+id: test-anti-patterns
+kind: skill
+pack: extras
+task: Testing & debugging
+summary: Audit tests for weak assertions and flakiness
+purpose: Find fragile setup, missing assertions and order-dependent tests.
+access: local
+needs: Read access to the test suite; includes .NET and other framework guidance.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: dotnet/skills
+  path: plugins/dotnet-test/skills/test-anti-patterns
+  commit: edfa9901d782c5b8987a8545f160fc2ef1523758
+  license: MIT
+vendored: packs/extras/skills/test-anti-patterns
+recommend_when: stacks contains dotnet and work contains testing
+why:
+  recommended: Matches your selected Testing & debugging work or stack.
+  not_recommended: Find fragile setup, missing assertions and order-dependent tests.

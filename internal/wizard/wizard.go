@@ -1,7 +1,6 @@
 // Package wizard holds the setup questionnaire independent of any screen: the questions,
 // their defaults from the scan, the recommended items and the user's changes to them, and
-// the profile they add up to. The console UI (internal/tui) and the line mode
-// (internal/plain) both drive it.
+// the profile they add up to. The terminal wizard and answers-file mode share it.
 package wizard
 
 import (
@@ -9,113 +8,117 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
-
-	"go.yaml.in/yaml/v3"
 
 	"github.com/willlovecode/agent-config/internal/catalog"
 	"github.com/willlovecode/agent-config/internal/check"
+	"github.com/willlovecode/agent-config/internal/policy"
 	"github.com/willlovecode/agent-config/internal/profile"
+	"github.com/willlovecode/agent-config/internal/routing"
 	"github.com/willlovecode/agent-config/internal/scan"
 )
 
 type Option struct {
-	Value, Label string
-	Note         string // e.g. "found: 2.1.318"
+	Value, Label, Detail string
+	Note                 string // e.g. "found: 2.1.318"
+	Group                string
 }
 
 type Question struct {
-	ID      string
-	Step    string // use, work
-	Prompt  string
-	Multi   bool
-	Options []Option
-	when    func(*Wizard) bool
-	def     func(*Wizard) []string
+	ID       string
+	Stage    Stage
+	Prompt   string
+	Multi    bool
+	ReadOnly bool
+	Hint     string
+	Options  []Option
+	when     func(*Wizard) bool
+	def      func(*Wizard) []string
 }
 
-// Steps in screen order; Use and Work hold the questions.
-var Steps = []string{"Welcome", "Scan", "How will you use it?", "What do you work on?", "Recommended setup", "Review and install"}
+// Stage identifies a step in the setup flow.
+type Stage int
+
+const (
+	StageSystem Stage = iota
+	StageProfile
+	StageWork
+	StageModels
+	StageItems
+	StageReview
+	StageApply
+	StageCount
+)
+
+var stageNames = [StageCount]string{"System", "Profile", "Work", "Models", "Items", "Review", "Apply"}
+
+func (s Stage) String() string { return stageNames[s] }
 
 type Wizard struct {
-	Scan    *scan.Result
-	Catalog *catalog.Catalog
-	Assets  fs.FS
-	values  map[string][]string
-	choice  map[string]bool // items the user switched on or off by hand
+	Scan          *scan.Result
+	Catalog       *catalog.Catalog
+	Assets        fs.FS
+	Policy        policy.Policy
+	Project       string
+	values        map[string][]string
+	choice        map[string]bool // items the user switched on or off by hand
+	answered      map[string]bool // questions the user answered, or a loaded file did, so defaults leave them alone
+	legacyRouting bool
+	loadedModels  []routing.Model
 }
 
 func New(cat *catalog.Catalog, assets fs.FS, s *scan.Result) *Wizard {
-	w := &Wizard{Scan: s, Catalog: cat, Assets: assets, values: map[string][]string{}, choice: map[string]bool{}}
-	for _, q := range questions {
-		w.values[q.ID] = q.def(w)
-	}
+	w := &Wizard{Catalog: cat, Assets: assets, values: map[string][]string{}, choice: map[string]bool{}, answered: map[string]bool{}}
+	w.SetScan(s)
 	return w
 }
 
-var questions = []*Question{
-	{ID: "use", Step: "use", Prompt: "Who is this machine for?", Options: []Option{
-		{Value: "personal", Label: "Personal"},
-		{Value: "corporate_gateway", Label: "Corporate, through a company LLM gateway"},
-		{Value: "corporate_key", Label: "Corporate, with my own API key"},
-	}, def: fixed("personal")},
-	{ID: "tools", Step: "use", Prompt: "Which agent tools will you use?", Multi: true, Options: []Option{
-		{Value: "claude_code", Label: "Claude Code"},
-		{Value: "codex", Label: "Codex"},
-	}, def: func(w *Wizard) []string {
-		var out []string
-		for _, t := range []string{"claude_code", "codex"} {
-			if w.Scan.Found(t) != "" {
-				out = append(out, t)
-			}
+func (w *Wizard) SetScan(s *scan.Result) {
+	w.Scan = s
+	for _, q := range questions {
+		if !w.answered[q.ID] {
+			w.values[q.ID] = q.def(w)
 		}
-		if len(out) == 0 {
-			out = []string{"claude_code", "codex"}
-		}
-		return out
-	}},
-	{ID: "allow_external_mcp", Step: "use", Prompt: "May tools send queries to outside services (e.g. Context7)?", Options: []Option{
-		{Value: "no", Label: "No, keep company data inside"},
-		{Value: "yes", Label: "Yes, my company allows it"},
-	}, when: func(w *Wizard) bool { return w.One("use") != "personal" }, def: fixed("no")},
-	{ID: "stacks", Step: "work", Prompt: "Which languages and stacks?", Multi: true, Options: []Option{
-		{Value: "python", Label: "Python"},
-		{Value: "java", Label: "Java"},
-		{Value: "spring", Label: "Spring Boot"},
-		{Value: "javascript", Label: "JavaScript / TypeScript"},
-		{Value: "go", Label: "Go"},
-		{Value: "dotnet", Label: "C# / .NET"},
-	}, def: func(w *Wizard) []string {
-		var out []string
-		for fact, stack := range map[string]string{"python": "python", "jdk": "java", "go": "go", "node": "javascript"} {
-			if w.Scan.Found(fact) != "" {
-				out = append(out, stack)
-			}
-		}
-		sort.Strings(out)
-		return out
-	}},
-	{ID: "work", Step: "work", Prompt: "What kind of work?", Multi: true, Options: []Option{
-		{Value: "greenfield", Label: "New code"},
-		{Value: "legacy_migration", Label: "Legacy code and migrations"},
-		{Value: "research", Label: "Research and literature"},
-		{Value: "ui", Label: "User interfaces"},
-		{Value: "data", Label: "Data and analysis"},
-		{Value: "ops", Label: "Operations and scripts"},
-	}, def: fixed("greenfield")},
+	}
 }
 
-func fixed(v ...string) func(*Wizard) []string { return func(*Wizard) []string { return v } }
-
-// Questions returns the questions of a step that apply to the current answers.
-func (w *Wizard) Questions(step string) []*Question {
+// Questions returns the questions of a stage that apply to the current answers.
+func (w *Wizard) Questions(stage Stage) []*Question {
 	var out []*Question
 	for _, q := range questions {
-		if q.Step == step && (q.when == nil || q.when(w)) {
-			out = append(out, q)
+		if q.Stage == stage && (q.when == nil || q.when(w)) {
+			out = append(out, w.question(q))
 		}
 	}
 	return out
+}
+
+func (w *Wizard) question(q *Question) *Question {
+	page := *q
+	switch q.ID {
+	case "routing":
+		if w.Company() && len(w.Policy.Models) == 0 {
+			keep := q.Options[0]
+			keep.Detail = "IT has not approved model changes. Keep the current settings."
+			page.Options = []Option{keep}
+		}
+	case "plans":
+		page.Options = w.planOptions()
+	case "models":
+		page.Options = w.modelOptions()
+	case "routes":
+		page.Options = routeOptions(w.Answers())
+	}
+	return &page
+}
+
+func (w *Wizard) SetPolicy(p policy.Policy) {
+	w.Policy = p
+	if p.Source != "" {
+		w.values["use"] = []string{"company"}
+		if !w.answered["routing"] || len(p.Models) == 0 {
+			w.values["routing"] = routingDefault(w)
+		}
+	}
 }
 
 func (w *Wizard) Values(id string) []string { return w.values[id] }
@@ -138,8 +141,15 @@ func (w *Wizard) Has(id, value string) bool {
 
 // Set answers a single-choice question, or toggles a value of a multiple-choice one.
 func (w *Wizard) Set(q *Question, value string) {
+	if q.ReadOnly {
+		return
+	}
+	w.answered[q.ID] = true
 	if !q.Multi {
 		w.values[q.ID] = []string{value}
+		if q.ID == "use" && (!w.answered["routing"] || (w.Company() && len(w.Policy.Models) == 0)) {
+			w.values["routing"] = routingDefault(w)
+		}
 		return
 	}
 	var out []string
@@ -160,60 +170,94 @@ func (w *Wizard) Set(q *Question, value string) {
 
 // Note is shown next to an option, e.g. which version of a tool the scan found.
 func (w *Wizard) Note(q *Question, o Option) string {
+	if q.ID == "routing" && o.Value == routingDefault(w)[0] {
+		return "recommended"
+	}
 	if q.ID == "tools" {
-		if v := w.Scan.Found(o.Value); v != "" {
-			return "found: " + v
+		if p := w.Scan.Find(o.Value); p != nil {
+			if p.Version != "" {
+				return "found: " + p.Version
+			}
+			return "on PATH"
 		}
-		return "not found"
+		if len(w.Scan.Programs) == 0 {
+			return "PATH not checked"
+		}
+		return "install later"
 	}
 	return o.Note
 }
 
-func (w *Wizard) Answers() profile.Answers {
-	return profile.Answers{
-		Use: w.One("use"), Tools: w.values["tools"], Stacks: w.values["stacks"], Work: w.values["work"],
-		AllowExternalMCP: w.One("use") != "personal" && w.One("allow_external_mcp") == "yes",
+// Blocked says why a question cannot be left as answered, or "" when it can.
+func (w *Wizard) Blocked(q *Question) string {
+	switch q.ID {
+	case "use":
+		if w.Policy.Source != "" && w.One("use") != "company" {
+			return "This machine is managed. Select Company to continue."
+		}
+	case "tools":
+		if len(w.values["tools"]) == 0 {
+			return "Select at least one agent tool to continue."
+		}
+	case "plans":
+		if !routingOn(w) {
+			return ""
+		}
+		if w.Company() && len(w.Policy.Models) == 0 {
+			return "IT has not approved any models. Go back and keep current models."
+		}
+		if len(w.selectedPlans()) == 0 {
+			return "Select a plan or go back and keep current models."
+		}
+	case "models":
+		a := w.Answers()
+		if len(a.Models) == 0 {
+			return "Confirm an available model or go back and keep current models."
+		}
+		if _, _, err := a.ResolveRouting(); err != nil {
+			return err.Error()
+		}
 	}
+	return ""
 }
 
-// Line is one item on the recommendations screen.
-type Line struct {
-	catalog.Decision
-	On   bool // what will be installed
-	Cost int  // always-loaded tokens when on
+// Answers records the exact access selected for routing. Leaving the preset off
+// omits routing fields entirely.
+func (w *Wizard) Answers() profile.Answers {
+	a := profile.Answers{
+		Use: w.One("use"), Tools: w.values["tools"], Stacks: append(append([]string(nil), w.values["stacks"]...), w.values["frameworks"]...), Work: w.values["work"],
+	}
+	if routingOn(w) {
+		if !w.legacyRouting {
+			a.Models = w.confirmedModels()
+		}
+		if w.legacyRouting || len(a.Models) > 0 {
+			a.Plans, a.Routing = w.selectedPlans(), w.One("routing")
+		}
+	}
+	return a
 }
 
-// Lines lists the user-scope items for the current answers: recommended ones on, unless
-// the user switched them. Project items are set up per project, not here.
-func (w *Wizard) Lines() []Line {
-	var out []Line
-	for _, d := range w.Catalog.Recommend(w.Answers().Facts(w.Scan.Facts())) {
-		if d.Item.Scope != "user" {
-			continue
+func (w *Wizard) confirmedModels() []routing.Model {
+	var out []routing.Model
+	for _, m := range w.models() {
+		if w.Has("models", m.Key()) {
+			out = append(out, m)
 		}
-		on := d.Recommended
-		if c, ok := w.choice[d.Item.ID]; ok {
-			on = c
-		}
-		out = append(out, Line{Decision: d, On: on, Cost: catalog.Cost(w.Assets, d.Item)})
 	}
 	return out
 }
 
-func (w *Wizard) Toggle(id string) {
-	for _, l := range w.Lines() {
-		if l.Item.ID == id {
-			w.choice[id] = !l.On
-		}
-	}
-}
-
 // Budget is the always-loaded token cost of the chosen items against the context budget.
-func (w *Wizard) Budget() (used, max int) {
+// It includes the larger of the clients' routing tables.
+func (w *Wizard) Budget() (used, limit int) {
 	for _, l := range w.Lines() {
 		if l.On {
 			used += l.Cost
 		}
+	}
+	if r, _, err := w.Answers().ResolveRouting(); err == nil {
+		used += max(catalog.Tokens(r.Section(routing.ToolClaude)), catalog.Tokens(r.Section(routing.ToolCodex)))
 	}
 	return used, check.Budget.Instructions + check.Budget.SkillTokens + check.Budget.AgentTokens
 }
@@ -228,53 +272,69 @@ func ProfilePath() (string, error) {
 }
 
 // Profile is the setup the answers and choices add up to.
-func (w *Wizard) Profile() (*profile.Profile, error) {
-	p := &profile.Profile{Description: "Set up with the agtk wizard", Answers: w.Answers()}
+func (w *Wizard) Profile() *profile.Profile {
+	p := &profile.Profile{Description: "Set up with the agtk wizard", Answers: w.Answers(), Items: []string{}}
+	project := profile.ProjectItems{Project: w.Project}
 	for _, l := range w.Lines() {
 		if l.On {
-			p.Items = append(p.Items, l.Item.ID)
+			if l.Item.Scope == "project" {
+				project.Items = append(project.Items, l.Item.ID)
+			} else {
+				p.Items = append(p.Items, l.Item.ID)
+			}
 		}
 	}
-	path, err := ProfilePath()
-	if err != nil {
-		return nil, err
+	if len(project.Items) > 0 {
+		p.ProjectItems = []profile.ProjectItems{project}
 	}
-	p.Path, p.Dir = path, filepath.Dir(path)
-	return p, nil
-}
-
-// SaveProfile writes the profile (answers and chosen items only: no machine details).
-func SaveProfile(p *profile.Profile) error {
-	b, err := yaml.Marshal(p)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(p.Dir, 0o755); err != nil {
-		return err
-	}
-	head := "# Saved by the agtk wizard. Re-apply with: agtk apply --profile " + p.Path + "\n"
-	return os.WriteFile(p.Path, append([]byte(head), b...), 0o644)
+	return p
 }
 
 // Load fills the answers and choices from a saved profile or an answers file.
 func (w *Wizard) Load(p *profile.Profile) error {
 	a := p.Answers
-	set := map[string][]string{"use": {a.Use}, "tools": a.Tools, "stacks": a.Stacks, "work": a.Work}
-	if a.AllowExternalMCP {
-		set["allow_external_mcp"] = []string{"yes"}
+	if w.Policy.Company(a) {
+		w.values["use"] = []string{"company"}
+	} else if a.Use != "" {
+		w.values["use"] = []string{a.Use}
+	}
+	if a.Tools == nil {
+		a.Tools = w.values["tools"]
+	}
+	if err := w.Policy.CheckRouting(a); err != nil {
+		return err
+	}
+	setup, _, err := a.ResolveRouting()
+	if err != nil {
+		return err
+	}
+	// Loading older files must not enable routing they did not request.
+	set := map[string][]string{"tools": a.Tools, "stacks": a.Stacks, "work": a.Work, "plans": routing.NormalizePlans(a.Plans),
+		"routing": {routing.None}}
+	w.loadedModels, w.legacyRouting = a.Models, a.Models == nil
+	for _, m := range a.Models {
+		set["models"] = append(set["models"], m.Key())
+	}
+	w.answered["routing"] = true
+	if setup != nil {
+		set["routing"] = []string{setup.Preset.ID}
 	}
 	for id, v := range set {
-		if len(v) > 0 && v[0] != "" {
+		if v != nil {
 			w.values[id] = v
 		}
 	}
-	if len(p.Items) == 0 {
+	if p.Items == nil {
 		return nil // keep the recommendations
 	}
 	chosen := map[string]bool{}
 	for _, id := range p.Items {
-		if _, ok := w.Catalog.Get(id); !ok {
+		it, ok := w.Catalog.Get(id)
+		if !ok {
 			return fmt.Errorf("item %q is not in the catalog", id)
+		}
+		if reason := w.Policy.ItemBlock(a, it); reason != "" {
+			return fmt.Errorf("%s: %s", id, reason)
 		}
 		chosen[id] = true
 	}
@@ -282,4 +342,13 @@ func (w *Wizard) Load(p *profile.Profile) error {
 		w.choice[l.Item.ID] = chosen[l.Item.ID]
 	}
 	return nil
+}
+
+func contains(l []string, s string) bool {
+	for _, x := range l {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }

@@ -1,0 +1,21 @@
+id: supabase-postgres-best-practices
+kind: skill
+pack: extras
+task: Data & databases
+summary: PostgreSQL schemas, queries and indexes
+purpose: Review migrations, RLS, indexing and slow queries in PostgreSQL.
+access: local
+needs: PostgreSQL project; the references ship with the skill.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: supabase/agent-skills
+  path: skills/supabase-postgres-best-practices
+  commit: c9be0e931b7930f7d02126d04774d904c381e7d7
+  license: MIT
+vendored: packs/extras/skills/supabase-postgres-best-practices
+website: https://github.com/supabase/agent-skills
+recommend_when: stacks contains postgres
+why:
+  recommended: Matches your selected Data & databases work or stack.
+  not_recommended: Review migrations, RLS, indexing and slow queries in PostgreSQL.

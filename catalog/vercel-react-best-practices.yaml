@@ -1,0 +1,25 @@
+id: vercel-react-best-practices
+kind: skill
+pack: extras
+task: Frontend & accessibility
+popularity:
+  label: "skills.sh All Time #31, 873.8k installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+summary: React and Next.js performance patterns
+purpose: Review rendering, data fetching and client bundle changes.
+access: network
+needs: React or Next.js project; the optional SVG recipe can download SVGO via npx.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: vercel-labs/agent-skills
+  path: skills/react-best-practices
+  commit: 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62
+  license: MIT
+vendored: packs/extras/skills/vercel-react-best-practices
+website: https://vercel.com/blog/introducing-react-best-practices
+recommend_when: stacks contains react or stacks contains nextjs
+why:
+  recommended: React or Next.js chosen; use the guide to catch slow rendering and large bundles.
+  not_recommended: Most useful in a React or Next.js project.

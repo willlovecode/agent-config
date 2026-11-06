@@ -14,6 +14,8 @@ sections after "Commits and PRs" are specific to this machine. Project specifics
 - Small, clear changes: just do them. For large, risky or hard-to-undo changes,
   outline the plan first and wait for my OK.
 - Ask before pushing, publishing, deleting data or spending money.
+- At session start, if `.agent-handoff/latest.md` exists and is newer than the last
+  commit, read it first.
 
 ## Code
 - Match the surrounding code: naming, structure, comment density.

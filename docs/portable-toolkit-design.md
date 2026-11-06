@@ -128,8 +128,9 @@ research):
 
 ## Checks that keep it honest
 
-- `checks/budget.mjs`: counts the always-loaded parts per profile (base, profile
-  overlay, listed skill descriptions, subagent descriptions) and fails CI above budget.
+- `checks/budget.mjs`: counts the always-loaded parts per profile (each tool's instruction
+  file built from base and profile overlay, CLAUDE.md with the routing table when the profile
+  routes models; listed skill descriptions; subagent descriptions) and fails CI above budget.
 - Hook tests (the 45 guard cases, the Stop-runner states) run in CI on Windows.
 - Skill validation: frontmatter, `name` = folder, no `allowed-tools` pre-approvals in
   vendored skills, pinned `SOURCE` present.

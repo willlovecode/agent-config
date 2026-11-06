@@ -1,31 +1,50 @@
 name: ci
 on: [push, pull_request]
 jobs:
-  checks:
-    runs-on: windows-latest
+  agtk:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Go vet and tests (hooks, catalog, install)
+        shell: pwsh
         run: |
           go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go test ./...
       - name: Build agtk
-        run: go build -o dist/agtk.exe ./cmd/agtk
+        shell: pwsh
+        run: |
+          $binary = Join-Path $PWD $(if ($IsWindows) { "dist/agtk.exe" } else { "dist/agtk" })
+          go build -o $binary ./cmd/agtk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "AGTK_BINARY=$binary" >> $env:GITHUB_ENV
       - name: agtk check (catalog, baseline, profiles, budget)
-        run: dist/agtk.exe check
-      - name: agtk apply (fake home, both profiles)
-        shell: powershell
+        shell: pwsh
+        run: '& $env:AGTK_BINARY check'
+      - name: agtk apply and undo (fake home, both profiles)
+        shell: pwsh
         run: |
           foreach ($p in "home", "work") {
             $fake = Join-Path $env:RUNNER_TEMP "agtk-home-$p"
             New-Item -ItemType Directory -Force $fake | Out-Null
             $env:USERPROFILE = $fake
-            & .\dist\agtk.exe apply --profile "profiles\$p" --tier A --skip-tools
-            if ($LASTEXITCODE -ne 0) { exit 1 }
+            $env:HOME = $fake
+            & $env:AGTK_BINARY apply --profile "profiles/$p" --tier A --skip-tools
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $env:AGTK_BINARY undo
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (Test-Path (Join-Path $fake ".codex/AGENTS.md")) { throw "Undo left agent instructions in $fake" }
           }
+  fallback:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Context budget per profile
         run: node checks/budget.mjs
       - name: Hook tests

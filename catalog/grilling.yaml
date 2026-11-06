@@ -1,4 +1,11 @@
 id: grilling
+task: Planning
+popularity:
+  label: "skills.sh All Time #16, 1.1M installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+purpose: Work through design tradeoffs before starting implementation.
+access: local
 kind: skill
 pack: core
 summary: design interview in rounds (call it by name)

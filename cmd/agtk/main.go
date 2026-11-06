@@ -1,4 +1,4 @@
-// Command agtk sets up Claude Code and Codex from a vetted catalog. See docs/wizard-design.md.
+// Command agtk sets up coding agents from a vetted catalog. See docs/wizard-design.md.
 package main
 
 import (
@@ -15,15 +15,17 @@ import (
 	"github.com/willlovecode/agent-config/internal/check"
 	"github.com/willlovecode/agent-config/internal/hooks"
 	"github.com/willlovecode/agent-config/internal/install"
+	"github.com/willlovecode/agent-config/internal/policy"
 	"github.com/willlovecode/agent-config/internal/profile"
 	"github.com/willlovecode/agent-config/internal/scan"
 )
 
 var version = "0.1.0-dev" // set by the release build
 
-const usage = `agtk %s: sets up Claude Code and Codex from a vetted catalog.
+const usage = `agtk %s: sets up Claude Code, Codex and Gemini CLI / Antigravity.
 
-  agtk [--ascii] [--plain]         the setup wizard (DOS-style screens; --plain asks line by line)
+  agtk [wizard] [--plain]          scrolling terminal wizard (--plain for line input)
+  agtk wizard --project DIR        include project-scoped skills in the wizard
   agtk --answers file [--save]     install from an answers file without questions (CI)
   agtk apply [--profile dir|file] [--tier A|B] [--skip-tools]
                                    install a saved profile (default: the last one applied)
@@ -36,6 +38,8 @@ const usage = `agtk %s: sets up Claude Code and Codex from a vetted catalog.
   agtk check [repo]                catalog, baseline, profile and budget checks (CI)
   agtk hook git-guard              (called by Claude Code and Codex)
   agtk hook stop-checks "<command>" [timeoutSeconds]
+
+  --skip-tools can also be used with the wizard and --answers.
 `
 
 func main() {
@@ -48,6 +52,8 @@ func main() {
 	}
 	var err error
 	switch cmd, args := os.Args[1], os.Args[2:]; cmd {
+	case "wizard":
+		err = runWizard(args)
 	case "hook":
 		err = runHook(args)
 	case "apply":
@@ -121,8 +127,11 @@ func runHook(args []string) error {
 func loadProfile(path string) (*profile.Profile, error) {
 	if path == "" {
 		st, err := install.ReadState(home())
+		if os.IsNotExist(err) || (err == nil && st.Profile == "") {
+			return nil, fmt.Errorf("choose a saved profile with --profile")
+		}
 		if err != nil {
-			return nil, fmt.Errorf("no --profile given and no earlier apply to repeat")
+			return nil, err
 		}
 		path = st.Profile
 	}
@@ -143,22 +152,29 @@ func runApply(args []string) error {
 	if err != nil {
 		return err
 	}
+	rules, err := policy.System(cat)
+	if err != nil {
+		return err
+	}
 	t := strings.ToUpper(*tier)
-	if t == "" {
-		s := scan.Run()
-		t = s.Tier
+	if t != "" && t != "A" && t != "B" {
+		return fmt.Errorf("--tier must be A or B")
+	}
+	if t == "" || rules.Company(p.Answers) {
+		s := scan.Discover()
+		if t == "" || s.Tier == "B" {
+			t = s.Tier
+		}
 		for _, why := range s.TierWhy {
 			fmt.Println("Tier B because", why)
 		}
-	} else if t != "A" && t != "B" {
-		return fmt.Errorf("--tier must be A or B")
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
 	return install.Apply(install.Options{
-		Home: home(), Assets: agentconfig.Assets, Catalog: cat, Profile: p, Tier: t,
+		Home: home(), Assets: agentconfig.Assets, Catalog: cat, Profile: p, Policy: rules, Tier: t,
 		Exe: exe, SkipTools: *skip, Version: version, Out: os.Stdout,
 	})
 }
@@ -166,12 +182,19 @@ func runApply(args []string) error {
 func runStatus() error {
 	h := home()
 	st, err := install.ReadState(h)
-	if err != nil {
+	if os.IsNotExist(err) {
 		fmt.Println("agtk has not applied a profile on this machine yet.")
 		return nil
 	}
+	if err != nil {
+		return err
+	}
+	name := st.Profile
+	if name == "" {
+		name = "(one-time setup)"
+	}
 	fmt.Printf("Profile:  %s\nTier:     %s\nApplied:  %s by agtk %s\nBinary:   %s\n",
-		st.Profile, st.Tier, st.AppliedAt.Local().Format("2006-01-02 15:04"), st.Version, st.Hook)
+		name, st.Tier, st.AppliedAt.Local().Format("2006-01-02 15:04"), st.Version, st.Hook)
 	b, _ := os.ReadFile(filepath.Join(h, ".claude", "settings.json"))
 	fmt.Printf("Claude Code git-guard hook: %v\n", strings.Contains(string(b), "git-guard"))
 	b, _ = os.ReadFile(filepath.Join(h, ".codex", "hooks.json"))
@@ -216,6 +239,10 @@ func runRecommend(args []string) error {
 		return err
 	}
 	facts := p.Answers.Facts(scan.Run().Facts())
+	rules, err := policy.System(cat)
+	if err != nil {
+		return err
+	}
 	chosen := map[string]bool{}
 	for _, id := range p.Items {
 		chosen[id] = true
@@ -227,6 +254,10 @@ func runRecommend(args []string) error {
 	}
 	total := 0
 	for _, d := range cat.Recommend(facts) {
+		if reason := rules.ItemBlock(p.Answers, d.Item); reason != "" {
+			fmt.Printf("[-] %-18s %s\n", d.Item.ID, reason)
+			continue
+		}
 		mark := "[ ]"
 		if d.Recommended {
 			mark = "[X]"

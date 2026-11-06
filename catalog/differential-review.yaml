@@ -1,0 +1,19 @@
+id: differential-review
+kind: skill
+pack: extras
+task: Review & security
+summary: Security review of changes and Git history
+purpose: Review a diff for regressions, changed trust boundaries and missing tests.
+access: network
+needs: Git for local diffs; optional gh commands for GitHub PRs.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: trailofbits/skills
+  path: plugins/differential-review/skills/differential-review
+  commit: 470419e16f97e112d01fc32f4898aea1755015d9
+  license: CC-BY-SA-4.0
+vendored: packs/extras/skills/differential-review
+website: https://github.com/trailofbits/skills
+why:
+  not_recommended: Optional for security review of Git changes or a pull request.

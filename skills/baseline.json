@@ -1,5 +1,5 @@
 {
-  "reading": "Vendored skills, approved 2026-11-04 (reports/addons-research-2026-11-04.html, design docs/portable-toolkit-design.md). Each skill is copied into packs/<pack>/skills/<name> at the pinned commit; install.ps1 installs from the repo copy, never from the network. skills-check compares the pins with upstream.",
+  "reading": "Vendored skills at pinned upstream revisions. Installers copy the local skill files. The extras pack is offered by the agtk wizard.",
   "plugins": {
     "claude": [],
     "codex": []
@@ -85,6 +85,175 @@
       "explicit_only": true,
       "modified": true,
       "why": "Spring Boot 4 practices for the energy-billing practice project; explicit-only; known issues appended (packs/MODIFICATIONS.md). Audits Gen Pass, Socket Pass."
+    },
+    {
+      "name": "vercel-react-best-practices",
+      "pack": "extras",
+      "repo": "vercel-labs/agent-skills",
+      "path": "skills/react-best-practices",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review rendering, data fetching and client bundle changes."
+    },
+    {
+      "name": "web-design-guidelines",
+      "pack": "extras",
+      "repo": "vercel-labs/agent-skills",
+      "path": "skills/web-design-guidelines",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review markup and interactions for common accessibility and UX problems."
+    },
+    {
+      "name": "writing-guidelines",
+      "pack": "extras",
+      "repo": "vercel-labs/agent-skills",
+      "path": "skills/writing-guidelines",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review technical prose, voice and style before publishing."
+    },
+    {
+      "name": "python-testing-patterns",
+      "pack": "extras",
+      "repo": "wshobson/agents",
+      "path": "plugins/python-development/skills/python-testing-patterns",
+      "commit": "4bde3168b43c0655c4d00ea2726e631719908a6d",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Design Python test suites and pick suitable fixtures, mocks and parametrization."
+    },
+    {
+      "name": "test-anti-patterns",
+      "pack": "extras",
+      "repo": "dotnet/skills",
+      "path": "plugins/dotnet-test/skills/test-anti-patterns",
+      "commit": "edfa9901d782c5b8987a8545f160fc2ef1523758",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Find fragile setup, missing assertions and order-dependent tests."
+    },
+    {
+      "name": "dotnet-webapi",
+      "pack": "extras",
+      "repo": "dotnet/skills",
+      "path": "plugins/dotnet-aspnetcore/skills/dotnet-webapi",
+      "commit": "edfa9901d782c5b8987a8545f160fc2ef1523758",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Write endpoints with correct HTTP semantics, errors and OpenAPI descriptions."
+    },
+    {
+      "name": "supabase-postgres-best-practices",
+      "pack": "extras",
+      "repo": "supabase/agent-skills",
+      "path": "skills/supabase-postgres-best-practices",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review migrations, RLS, indexing and slow queries in PostgreSQL."
+    },
+    {
+      "name": "terraform-style-guide",
+      "pack": "extras",
+      "repo": "hashicorp/agent-skills",
+      "path": "plugins/terraform/skills/terraform-style-guide",
+      "commit": "5e30fa5c867ba6777c37e4206babfd08049c396f",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review modules and HCL for consistent naming, structure and resource configuration."
+    },
+    {
+      "name": "playwright-cli",
+      "pack": "extras",
+      "repo": "microsoft/playwright-cli",
+      "path": "skills/playwright-cli",
+      "commit": "f50f57905b9fd3dd355330719ddf0687000c9437",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Reproduce UI failures, inspect test flows and capture browser traces."
+    },
+    {
+      "name": "differential-review",
+      "pack": "extras",
+      "repo": "trailofbits/skills",
+      "path": "plugins/differential-review/skills/differential-review",
+      "commit": "470419e16f97e112d01fc32f4898aea1755015d9",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Review a diff for regressions, changed trust boundaries and missing tests."
+    },
+    {
+      "name": "i-have-adhd",
+      "pack": "extras",
+      "repo": "ayghri/i-have-adhd",
+      "path": "skills/i-have-adhd",
+      "commit": "1ecea1993b7fce257ffbd686c070948b5e07eda6",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Lead with the next action, number the steps and keep progress visible across turns."
+    },
+    {
+      "name": "caveman",
+      "pack": "extras",
+      "repo": "JuliusBrussee/caveman",
+      "path": "skills/caveman",
+      "commit": "2e068f735253cce28256744804785f01887d9646",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Get concise answers that preserve commands, paths, numbers and warnings."
+    },
+    {
+      "name": "find-skills",
+      "pack": "extras",
+      "repo": "vercel-labs/skills",
+      "path": "skills/find-skills",
+      "commit": "cabe07254cddf16a3a650253f0ba03d543d8a86e",
+      "tools": [
+        "claude",
+        "codex"
+      ],
+      "explicit_only": true,
+      "why": "Search skills.sh and GitHub for a task and review each skill's source and requirements."
     }
   ]
 }

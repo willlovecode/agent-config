@@ -1,32 +1,31 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-
-	"golang.org/x/term"
+	"path/filepath"
 
 	agentconfig "github.com/willlovecode/agent-config"
 	"github.com/willlovecode/agent-config/internal/catalog"
 	"github.com/willlovecode/agent-config/internal/install"
 	"github.com/willlovecode/agent-config/internal/plain"
+	"github.com/willlovecode/agent-config/internal/policy"
 	"github.com/willlovecode/agent-config/internal/profile"
 	"github.com/willlovecode/agent-config/internal/scan"
-	"github.com/willlovecode/agent-config/internal/tui"
 	"github.com/willlovecode/agent-config/internal/wizard"
 )
 
-// runWizard is `agtk` with no command: the DOS-style screens, line mode with --plain (or
-// when stdin is not a terminal), or no questions at all with --answers.
+// runWizard starts interactive setup or applies an unattended answers file.
 func runWizard(args []string) error {
 	fs := flag.NewFlagSet("agtk", flag.ExitOnError)
-	ascii := fs.Bool("ascii", false, "draw frames with ASCII characters")
-	plainMode := fs.Bool("plain", false, "ask line by line (screen readers, small terminals)")
+	fs.Bool("ascii", false, "accepted for compatibility (prompts use ASCII)")
+	plainMode := fs.Bool("plain", false, "press Enter after each answer (automatic for pipes)")
 	answers := fs.String("answers", "", "install from this answers file without questions")
 	save := fs.Bool("save", false, "with --answers: also save the profile for `agtk apply`")
+	skipTools := fs.Bool("skip-tools", false, "skip the claude/npm commands (MCP, plugins, npm packages)")
+	project := fs.String("project", "", "offer project-scoped skills for this folder")
 	fs.Parse(args)
 
 	cat, err := catalog.Load(agentconfig.Assets)
@@ -37,22 +36,58 @@ func runWizard(args []string) error {
 	if err != nil {
 		return err
 	}
-	s := scan.Run()
-	w := wizard.New(cat, agentconfig.Assets, s)
-	h := home()
-	opts := func(p *profile.Profile, out io.Writer) install.Options {
-		return install.Options{Home: h, Assets: agentconfig.Assets, Catalog: cat, Profile: p, Tier: s.Tier,
-			Exe: exe, Version: version, Out: out}
-	}
-	plan := func(p *profile.Profile) ([]install.Change, error) { return install.Plan(opts(p, io.Discard)) }
-	apply := func(p *profile.Profile, save bool, out io.Writer) error {
-		if save {
-			if err := wizard.SaveProfile(p); err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Saved your answers to %s\n", p.Path)
+	w := wizard.New(cat, agentconfig.Assets, &scan.Result{})
+	preflight := func(discover bool) (*scan.Result, policy.Policy, error) {
+		rules, err := policy.System(cat)
+		if err != nil {
+			return nil, rules, err
 		}
-		return install.Apply(opts(p, out))
+		if discover {
+			return scan.Discover(), rules, nil
+		}
+		return scan.PolicyOnly(), rules, nil
+	}
+	if *project != "" {
+		if *answers != "" {
+			return fmt.Errorf("set project_items in the answers file when using --answers")
+		}
+		w.Project, err = filepath.Abs(*project)
+		if err != nil {
+			return err
+		}
+		if st, err := os.Stat(w.Project); err != nil || !st.IsDir() {
+			return fmt.Errorf("--project needs an existing folder")
+		}
+	}
+	h := home()
+	opts := func(p *profile.Profile, save bool, out io.Writer) (install.Options, error) {
+		rules, err := policy.System(cat)
+		if err != nil {
+			return install.Options{}, err
+		}
+		if save {
+			path, err := wizard.ProfilePath()
+			if err != nil {
+				return install.Options{}, err
+			}
+			p = p.At(path)
+		}
+		return install.Options{Home: h, Assets: agentconfig.Assets, Catalog: cat, Profile: p, Policy: rules, Tier: scan.PolicyOnly().Tier,
+			Exe: exe, SaveProfile: save, SkipTools: *skipTools, Version: version, Out: out}, nil
+	}
+	plan := func(p *profile.Profile, save bool) ([]install.Change, error) {
+		options, err := opts(p, save, io.Discard)
+		if err != nil {
+			return nil, err
+		}
+		return install.Plan(options)
+	}
+	apply := func(p *profile.Profile, save bool, out io.Writer) error {
+		options, err := opts(p, save, out)
+		if err != nil {
+			return err
+		}
+		return install.Apply(options)
 	}
 
 	if *answers != "" {
@@ -60,38 +95,25 @@ func runWizard(args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := w.Load(p); err != nil {
-			return err
-		}
-		chosen, err := w.Profile()
+		s, rules, err := preflight(true)
 		if err != nil {
 			return err
 		}
-		return apply(chosen, *save, os.Stdout)
+		w.SetScan(s)
+		w.SetPolicy(rules)
+		if p.Items == nil {
+			if err := w.Load(p); err != nil {
+				return err
+			}
+			chosen := w.Profile()
+			chosen.Answers.Autonomy, chosen.Answers.Budget = p.Answers.Autonomy, p.Answers.Budget
+			p.Answers, p.Items = chosen.Answers, chosen.Items
+			// The source file does not contain the resolved choices for agtk apply.
+			p.Path = ""
+		}
+		return apply(p, *save, os.Stdout)
 	}
-	runPlain := func() error {
-		_, err := plain.Run(w, plain.Config{Plan: plan, Apply: apply}, os.Stdin, os.Stdout)
-		return err
-	}
-	if *plainMode || !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
-		return runPlain()
-	}
-	d := tui.Detect(*ascii)
-	res, err := tui.Run(w, tui.Config{Version: version, Display: d, Home: h, Plan: plan, Apply: apply})
-	tui.Restore()
-	if errors.Is(err, tui.ErrPlain) {
-		return runPlain()
-	}
-	if err != nil {
-		return err
-	}
-	// Leave the install log on the terminal once the screen is gone.
-	fmt.Print(res.Log)
-	if res.Err != nil {
-		return res.Err
-	}
-	if !res.Installed {
-		fmt.Println("Left setup. Nothing was written.")
-	}
-	return nil
+	cfg := plain.Config{Home: h, Preflight: preflight, Plan: plan, Apply: apply, LineInput: *plainMode}
+	_, err = plain.Run(w, cfg, os.Stdin, os.Stdout)
+	return err
 }

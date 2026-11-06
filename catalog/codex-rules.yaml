@@ -1,4 +1,7 @@
 id: codex-rules
+task: Review & security
+purpose: Apply Codex rules for sensitive Git commands.
+access: local
 kind: rules
 summary: Codex execpolicy rules forbid push and reset --hard
 tools: [codex]

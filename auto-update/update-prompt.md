@@ -19,6 +19,12 @@ Files you may edit, and nothing else:
 - `auto-update/check-model.json`: model, effort and a one-sentence reason for
   the "check" row.
 
+The row "Everyday work in the main session" for Claude Code follows the routing preset
+(Sonnet, set by the user to save subscription limit). Never change it to Opus. Keep its
+Claude Code cell self-contained, "Sonnet at high (the default model; Opus at medium for
+hard tasks and review)": this file also lands in ~/.codex/AGENTS.md, which has no routing
+table, so it must not point to one.
+
 Model ids: FrontierCode "Claude Sonnet 5.5" is `claude-sonnet-5-5`;
 "GPT-6.1 Sol" is `gpt-6.1-sol`; "GPT-6 Astra" is `gpt-6-astra`.
 

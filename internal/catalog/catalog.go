@@ -6,10 +6,12 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -29,20 +31,31 @@ var kinds = map[string]bool{KindInstructions: true, KindHook: true, KindRules: t
 	KindSkill: true, KindMCP: true, KindPlugin: true}
 
 type Item struct {
-	ID      string   `yaml:"id"`
-	Kind    string   `yaml:"kind"`
-	Summary string   `yaml:"summary"` // one line for the wizard list
-	Tools   []string `yaml:"tools"`   // claude_code, codex
-	OS      []string `yaml:"os"`      // windows, linux
-	Scope   string   `yaml:"scope"`   // user (default) or project
-	Pack    string   `yaml:"pack"`    // the pack the PowerShell installer knows it by
-	Source  struct {
+	ID         string `yaml:"id"`
+	Kind       string `yaml:"kind"`
+	Summary    string `yaml:"summary"` // one line for the wizard list
+	Task       string `yaml:"task"`
+	Purpose    string `yaml:"purpose"`
+	Website    string `yaml:"website"`
+	Popularity *struct {
+		Label   string `yaml:"label"`
+		URL     string `yaml:"url"`
+		Checked string `yaml:"checked"`
+	} `yaml:"popularity"`
+	Access string   `yaml:"access"` // local, command, or network
+	Needs  string   `yaml:"needs"`
+	Tools  []string `yaml:"tools"` // claude_code, codex, gemini
+	OS     []string `yaml:"os"`    // windows, linux
+	Scope  string   `yaml:"scope"` // user (default) or project
+	Pack   string   `yaml:"pack"`  // the pack the PowerShell installer knows it by
+	Source struct {
 		Repo    string `yaml:"repo"`
 		Path    string `yaml:"path"`
 		Commit  string `yaml:"commit"`
 		License string `yaml:"license"`
 	} `yaml:"source"`
 	Vendored      string `yaml:"vendored"` // path in the repo (and the binary)
+	Authored      bool   `yaml:"authored"` // a skill written in this repo: no upstream source, not in baseline.json
 	Audit         string `yaml:"audit"`
 	ExplicitOnly  bool   `yaml:"explicit_only"`
 	Modified      bool   `yaml:"modified"`
@@ -65,6 +78,22 @@ type Item struct {
 }
 
 func (it *Item) Supports(tool string) bool { return contains(it.Tools, tool) }
+
+func isHTTPS(link string) bool {
+	u, err := url.Parse(link)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil
+}
+
+func (it *Item) SourceURL() string {
+	if it.Source.Repo == "" {
+		return ""
+	}
+	link := "https://github.com/" + it.Source.Repo + "/tree/" + it.Source.Commit
+	if it.Source.Path != "" {
+		link += "/" + it.Source.Path
+	}
+	return link
+}
 
 type Catalog struct {
 	Items []*Item
@@ -118,7 +147,7 @@ func validate(fsys fs.FS, it *Item, file string) error {
 		return bad("summary and tools are required")
 	}
 	for _, t := range it.Tools {
-		if t != "claude_code" && t != "codex" {
+		if t != "claude_code" && t != "codex" && t != "gemini" {
 			return bad("unknown tool %q", t)
 		}
 	}
@@ -127,6 +156,22 @@ func validate(fsys fs.FS, it *Item, file string) error {
 	}
 	if it.Source.Repo != "" && !shaRe.MatchString(it.Source.Commit) {
 		return bad("source.commit must be a full commit SHA")
+	}
+	if it.Website != "" && !isHTTPS(it.Website) {
+		return bad("website must be a public HTTPS URL")
+	}
+	if p := it.Popularity; p != nil {
+		if it.Kind != KindSkill || p.Label == "" || !isHTTPS(p.URL) {
+			return bad("popularity requires a skill, a label and a public HTTPS URL")
+		}
+		if _, err := time.Parse(time.DateOnly, p.Checked); err != nil {
+			return bad("popularity.checked must be a date in YYYY-MM-DD format")
+		}
+	}
+	switch it.Access {
+	case "", "local", "command", "network":
+	default:
+		return bad("unknown access %q", it.Access)
 	}
 	if it.Vendored != "" {
 		if _, err := fs.Stat(fsys, it.Vendored); err != nil {
@@ -138,8 +183,11 @@ func validate(fsys fs.FS, it *Item, file string) error {
 		if _, err := fs.Stat(fsys, path.Join(it.Vendored, "SKILL.md")); err != nil {
 			return bad("no SKILL.md in %s", it.Vendored)
 		}
-		if it.Source.Repo == "" {
-			return bad("a skill needs source.repo and a pinned source.commit")
+		if it.Authored && it.Source.Repo != "" {
+			return bad("an authored skill has no source")
+		}
+		if !it.Authored && it.Source.Repo == "" {
+			return bad("a skill needs source.repo and a pinned source.commit, or authored: true")
 		}
 	case KindInstructions, KindAgents, KindRules:
 		if it.Vendored == "" {

@@ -11,13 +11,14 @@ Artificial Analysis was last read on 2026-10-11 and not again.
 | Task | Claude Code | Codex |
 |---|---|---|
 | Hardest design, debugging, review | Opus at medium (`review` agent for reviews) | `--profile deep` (GPT-6 Astra, max) |
-| Everyday work in the main session | Opus at medium | default (GPT-6.1 Sol, medium) |
+| Everyday work in the main session | Sonnet at high (the default model; Opus at medium for hard tasks and review) | default (GPT-6.1 Sol, medium) |
 | Implementation from a clear brief | `implement` agent (Sonnet, high) | default |
 | Mechanical edits across files | `mechanic` agent (Haiku, medium) | `--profile quick` (GPT-6.1 Sol, low) |
 | Finding where things live | `scout` agent (Haiku, medium) | `--profile quick` |
 
-- Opus at medium is the top score of the board (54.6% at $0.80 a task), so
-  nothing Claude above it is worth its cost.
+- Opus at medium is the strongest Claude setting per task (the top score of the
+  board, 54.6% at $0.80 a task); nothing Claude above it is worth its cost.
+  Sonnet at high is chosen for daily work to save subscription limit.
 - Never use Opus at low, high or xhigh, Sonnet at low, medium, xhigh or max,
   Haiku at xhigh or max, or GPT-6.1 Sol above medium: each is beaten on score
   and cost by a neighbouring setting. Max is worth it only for GPT-6 Astra.

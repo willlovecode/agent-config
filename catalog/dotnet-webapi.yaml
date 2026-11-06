@@ -1,0 +1,20 @@
+id: dotnet-webapi
+kind: skill
+pack: extras
+task: Backend
+summary: ASP.NET Core API conventions
+purpose: Write endpoints with correct HTTP semantics, errors and OpenAPI descriptions.
+access: local
+needs: ASP.NET Core project.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: dotnet/skills
+  path: plugins/dotnet-aspnetcore/skills/dotnet-webapi
+  commit: edfa9901d782c5b8987a8545f160fc2ef1523758
+  license: MIT
+vendored: packs/extras/skills/dotnet-webapi
+recommend_when: stacks contains aspnet
+why:
+  recommended: Matches your selected Backend work or stack.
+  not_recommended: Write endpoints with correct HTTP semantics, errors and OpenAPI descriptions.

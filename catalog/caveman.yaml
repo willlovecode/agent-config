@@ -1,0 +1,23 @@
+id: caveman
+kind: skill
+pack: extras
+task: General
+summary: Short technical replies
+purpose: Get concise answers that preserve commands, paths, numbers and warnings.
+access: local
+tools: [claude_code, codex]
+explicit_only: true
+modified: true
+source:
+  repo: JuliusBrussee/caveman
+  path: skills/caveman
+  commit: 2e068f735253cce28256744804785f01887d9646
+  license: Apache-2.0
+vendored: packs/extras/skills/caveman
+website: https://github.com/JuliusBrussee/caveman
+popularity:
+  label: "skills.sh All Time #99, 611.9k installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+why:
+  not_recommended: Choose this if you prefer compact explanations while you work.

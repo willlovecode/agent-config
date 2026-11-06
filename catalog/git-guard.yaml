@@ -1,4 +1,7 @@
 id: git-guard
+task: Review & security
+purpose: Block pushes and destructive Git commands from agent shell sessions.
+access: local
 kind: hook
 summary: blocks push / reset --hard / clean
 tools: [claude_code, codex]

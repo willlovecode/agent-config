@@ -1,7 +1,7 @@
 id: instructions-base
 kind: instructions
 summary: working agreement (communication, scope, code, secrets, commits)
-tools: [claude_code, codex]
+tools: [claude_code, codex, gemini]
 vendored: base/AGENTS.md
 recommend_when: always
 why:

@@ -10,7 +10,7 @@ $runner = Join-Path $env:USERPROFILE ".agent-config\hooks\stop-checks.mjs"
 if (-not (Test-Path $runner)) { throw "run install.ps1 first ($runner missing)" }
 $runnerFwd = $runner -replace '\\', '/'
 
-function Read-Json($path) { if (Test-Path $path) { Get-Content $path -Raw | ConvertFrom-Json } else { [pscustomobject]@{} } }
+function Read-Json($path) { if (Test-Path $path) { Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} } }
 function Set-Prop($obj, $name, $value) { $obj | Add-Member -Force -NotePropertyName $name -NotePropertyValue $value }
 function Set-StopHook($path, $group) {
   New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null

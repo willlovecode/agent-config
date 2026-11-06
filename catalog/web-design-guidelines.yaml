@@ -1,0 +1,24 @@
+id: web-design-guidelines
+kind: skill
+pack: extras
+task: Frontend & accessibility
+popularity:
+  label: "skills.sh All Time #61, 828.8k installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+summary: Accessibility and UI review checklist
+purpose: Review markup and interactions for common accessibility and UX problems.
+access: network
+needs: Fetches Vercel's current Web Interface Guidelines from GitHub.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: vercel-labs/agent-skills
+  path: skills/web-design-guidelines
+  commit: 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62
+  license: MIT
+vendored: packs/extras/skills/web-design-guidelines
+website: https://github.com/vercel-labs/agent-skills#web-design-guidelines
+why:
+  recommended: Matches your selected Frontend & accessibility work or stack.
+  not_recommended: Review markup and interactions for common accessibility and UX problems.

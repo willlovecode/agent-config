@@ -1,0 +1,24 @@
+id: find-skills
+kind: skill
+pack: extras
+task: General
+summary: Find current agent skills
+purpose: Search skills.sh and GitHub for a task and review each skill's source and requirements.
+access: network
+needs: Access to skills.sh and GitHub. Additional installations require your approval.
+tools: [claude_code, codex]
+explicit_only: true
+modified: true
+source:
+  repo: vercel-labs/skills
+  path: skills/find-skills
+  commit: cabe07254cddf16a3a650253f0ba03d543d8a86e
+  license: MIT
+vendored: packs/extras/skills/find-skills
+website: https://www.skills.sh/vercel-labs/skills/find-skills
+popularity:
+  label: "skills.sh All Time #1, 4.2M installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+why:
+  not_recommended: Use this when you need options beyond this installer's shortlist.

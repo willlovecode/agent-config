@@ -1,4 +1,8 @@
 id: pyright-lsp
+task: Testing & debugging
+purpose: Get Python typing diagnostics in Claude Code.
+access: command
+needs: Node and npm; may install pinned Pyright globally and register a plugin.
 kind: plugin
 summary: Python type checking as you edit (LSP)
 tools: [claude_code]

@@ -26,7 +26,7 @@ for the rules this installs. Built from agent-config $(git -C $repo rev-parse --
 # Personal markers that must never reach a work machine.
 $markers = "walbe", "walbert", "Sol\b", "Vega\b", "infoStacker", "vbgym", "Ryzen", "last30days"
 $hits = Get-ChildItem -Recurse -File $stage | Select-String -Pattern $markers -CaseSensitive |
-  Where-Object { $_.Path -notmatch '\\packs\\[^\\]+\\skills\\' }   # vendored third-party text is checked by review, not markers
+  Where-Object { $_.Path -notmatch '\\packs\\[^\\]+\\skills\\' -and $_.Path -notmatch '\\checks\\routing\.mjs$' }   # vendored third-party text is checked by review, not markers; routing.mjs only names the home presets' models and budget.mjs imports it
 if ($hits) { $hits | ForEach-Object { "  $($_.Path.Substring($stage.Length)):$($_.LineNumber): $($_.Line.Trim())" }; throw "personal markers found in the work kit" }
 
 $zip = Join-Path $repo "dist\agent-kit-work.zip"

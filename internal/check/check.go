@@ -14,7 +14,9 @@ import (
 	"strings"
 
 	"github.com/willlovecode/agent-config/internal/catalog"
+	"github.com/willlovecode/agent-config/internal/install"
 	"github.com/willlovecode/agent-config/internal/profile"
+	"github.com/willlovecode/agent-config/internal/routing"
 )
 
 // Budget is what every session may load before the task starts (docs/portable-toolkit-design.md).
@@ -116,7 +118,7 @@ func (c *checker) baseline(fsys fs.FS, cat *catalog.Catalog) {
 		}
 	}
 	for _, it := range cat.Items {
-		if it.Kind == catalog.KindSkill && !seen[it.ID] {
+		if it.Kind == catalog.KindSkill && !it.Authored && !seen[it.ID] {
 			c.fail("catalog skill %s is missing from skills/baseline.json", it.ID)
 		}
 	}
@@ -152,6 +154,30 @@ func (c *checker) profile(fsys fs.FS, cat *catalog.Catalog, dir string) {
 	}
 	c.legacy(cat, p, items, name)
 	c.budget(fsys, p, items, name)
+	c.modelSettings(p, name)
+}
+
+// modelSettings fails when a profile that routes models has a model-settings file that
+// sets an effort the preset does not: apply lets the file win, which silently undoes the
+// preset.
+func (c *checker) modelSettings(p *profile.Profile, name string) {
+	route, _, err := p.Answers.ResolveRouting()
+	if err != nil || route == nil || p.ClaudeModelSettings == "" {
+		return // budget reports a bad routing answer
+	}
+	b, err := p.File(p.ClaudeModelSettings)
+	if err != nil {
+		c.fail("profile %s: %v", name, err)
+		return
+	}
+	diffs, err := routing.ModelDifferences(route.ClaudeEfforts(), b)
+	if err != nil {
+		c.fail("profile %s: %s: %v", name, p.ClaudeModelSettings, err)
+		return
+	}
+	for _, d := range diffs {
+		c.fail("profile %s: %s sets %s to %s, routing preset %s says %s", name, p.ClaudeModelSettings, d.Model, d.Profile, route.Preset.ID, d.Preset)
+	}
 }
 
 // legacy compares profile.yaml with the profile.json the PowerShell installer reads.
@@ -165,9 +191,13 @@ func (c *checker) legacy(cat *catalog.Catalog, p *profile.Profile, items []*cata
 		c.fail("profile %s: profile.json: %v", name, err)
 		return
 	}
+	if r := routing.Active(p.Answers.Routing); r != "" {
+		fmt.Fprintf(c.w, "note: profile %s routes models (%s); install.ps1 applies that only by handing over to agtk.exe, its legacy path does not\n", name, r)
+	}
 	var want, got []string
 	for _, it := range cat.Items {
-		if (it.Kind == catalog.KindSkill || it.Kind == catalog.KindAgents) && it.Scope == "user" && contains(lp.Packs, it.Pack) {
+		// Authored skills have no pin for baseline.json, so the PowerShell installer never installs them.
+		if (it.Kind == catalog.KindSkill || it.Kind == catalog.KindAgents) && !it.Authored && it.Scope == "user" && contains(lp.Packs, it.Pack) {
 			want = append(want, it.ID)
 		}
 	}
@@ -185,7 +215,9 @@ func (c *checker) legacy(cat *catalog.Catalog, p *profile.Profile, items []*cata
 	for _, it := range items {
 		switch it.Kind {
 		case catalog.KindSkill, catalog.KindAgents, catalog.KindMCP, catalog.KindPlugin:
-			got = append(got, it.ID)
+			if !it.Authored {
+				got = append(got, it.ID)
+			}
 		}
 		npm = append(npm, it.NPM...)
 	}
@@ -211,9 +243,14 @@ func (c *checker) legacy(cat *catalog.Catalog, p *profile.Profile, items []*cata
 	}
 }
 
+type budgetRow struct {
+	label    string
+	val, max int
+}
+
 func (c *checker) budget(fsys fs.FS, p *profile.Profile, items []*catalog.Item, name string) {
 	skillCount, skillTokens, agentTokens := 0, 0, 0
-	var texts []string // joined before counting, as AGENTS.md is
+	var texts []string // joined before counting, as the instruction files are
 	for _, it := range items {
 		cost := catalog.Cost(fsys, it)
 		switch it.Kind {
@@ -233,17 +270,36 @@ func (c *checker) budget(fsys fs.FS, p *profile.Profile, items []*catalog.Item, 
 		b, _ := p.File(p.Instructions)
 		texts = append(texts, string(b))
 	}
-	instructions := catalog.Tokens(strings.Join(texts, "\n\n"))
-	fmt.Fprintf(c.w, "\n%s\n", name)
-	rows := []struct {
-		label    string
-		val, max int
-	}{
-		{"instructions (AGENTS.md)", instructions, Budget.Instructions},
-		{"listed skills (count)", skillCount, Budget.SkillCount},
-		{"listed skill descriptions", skillTokens, Budget.SkillTokens},
-		{"subagent descriptions", agentTokens, Budget.AgentTokens},
+	// Count each tool's generated instructions independently.
+	useClaude := len(p.Answers.Tools) == 0 || contains(p.Answers.Tools, "claude_code")
+	useCodex := len(p.Answers.Tools) == 0 || contains(p.Answers.Tools, "codex")
+	route, _, err := p.Answers.ResolveRouting()
+	if err != nil {
+		c.fail("profile %s: %v", name, err)
 	}
+	claudeText, codexText, geminiText := install.SetupInstructionTexts(texts, route)
+	var rows []budgetRow
+	instructions := 0
+	if useClaude {
+		n := catalog.Tokens(claudeText)
+		rows = append(rows, budgetRow{"instructions (CLAUDE.md)", n, Budget.Instructions})
+		instructions = n
+	}
+	if useCodex {
+		n := catalog.Tokens(codexText)
+		rows = append(rows, budgetRow{"instructions (AGENTS.md)", n, Budget.Instructions})
+		instructions = max(instructions, n) // a session loads one of the files
+	}
+	if contains(p.Answers.Tools, "gemini") {
+		n := catalog.Tokens(geminiText)
+		rows = append(rows, budgetRow{"instructions (GEMINI.md)", n, Budget.Instructions})
+		instructions = max(instructions, n)
+	}
+	fmt.Fprintf(c.w, "\n%s\n", name)
+	rows = append(rows,
+		budgetRow{"listed skills (count)", skillCount, Budget.SkillCount},
+		budgetRow{"listed skill descriptions", skillTokens, Budget.SkillTokens},
+		budgetRow{"subagent descriptions", agentTokens, Budget.AgentTokens})
 	for _, r := range rows {
 		mark := "ok  "
 		if r.val > r.max {

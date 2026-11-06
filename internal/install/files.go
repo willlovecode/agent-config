@@ -162,6 +162,13 @@ func setTOMLTopKeys(text string, keys []string, values map[string]string) (strin
 		found := false
 		for i := 0; i < end; i++ {
 			if keyRe.MatchString(lines[i]) {
+				if values[k] == "" {
+					lines = append(lines[:i], lines[i+1:]...)
+					end--
+					changes = append(changes, "removed "+k)
+					found = true
+					break
+				}
 				if lines[i] != line {
 					changes = append(changes, strings.TrimSpace(lines[i])+" -> "+line)
 				}
@@ -169,7 +176,7 @@ func setTOMLTopKeys(text string, keys []string, values map[string]string) (strin
 				break
 			}
 		}
-		if !found {
+		if !found && values[k] != "" {
 			lines = append([]string{line}, lines...)
 			end++
 			changes = append(changes, "added "+line)

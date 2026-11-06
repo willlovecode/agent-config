@@ -1,0 +1,22 @@
+id: i-have-adhd
+kind: skill
+pack: extras
+task: General
+summary: Action-first replies
+purpose: Lead with the next action, number the steps and keep progress visible across turns.
+access: local
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: ayghri/i-have-adhd
+  path: skills/i-have-adhd
+  commit: 1ecea1993b7fce257ffbd686c070948b5e07eda6
+  license: MIT
+vendored: packs/extras/skills/i-have-adhd
+website: https://github.com/ayghri/i-have-adhd
+popularity:
+  label: "60.2k GitHub repository stars"
+  url: https://github.com/ayghri/i-have-adhd
+  checked: 2026-11-05
+why:
+  not_recommended: Choose this if you want help starting a task and keeping track of multi-step work.

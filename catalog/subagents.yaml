@@ -1,4 +1,7 @@
 id: subagents
+task: Review & security
+purpose: Install scout, mechanic, implementation and review roles for Claude Code.
+access: local
 kind: agents
 pack: core
 summary: scout, mechanic, implement, review subagents

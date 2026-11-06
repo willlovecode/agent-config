@@ -4,11 +4,15 @@
 description: "Home desktop: personal accounts, FrontierCode model table, auto-update on."
 answers:
   use: personal
-  tools: [claude_code, codex]
+  tools: [claude_code, codex, gemini]
   stacks: [python, java, spring, javascript]
   work: [greenfield, research, data]
   autonomy: autonomous
   budget: normal
+  # From Dec 2026: switch gemini_pro to gemini_plus (free student year) or keep AI Pro
+  # (EUR 5.49 student price), then re-run `agtk apply --profile profiles/home`.
+  plans: [claude_pro, copilot, gemini_pro]
+  routing: balanced
 items:
   - instructions-base
   - git-guard
@@ -18,6 +22,7 @@ items:
   - diagnosing-bugs
   - grilling
   - grill-me
+  - handoff
   - paper-lookup
   - context7
   - pyright-lsp

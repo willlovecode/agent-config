@@ -1,4 +1,11 @@
 id: tdd
+task: Testing & debugging
+popularity:
+  label: "skills.sh All Time #11, 1.2M installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+purpose: Use a test-first loop to design behavior and catch regressions.
+access: local
 kind: skill
 pack: core
 summary: test-first loop

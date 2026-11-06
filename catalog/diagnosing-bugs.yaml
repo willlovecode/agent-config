@@ -1,4 +1,11 @@
 id: diagnosing-bugs
+task: Testing & debugging
+popularity:
+  label: "skills.sh All Time #30, 895.6k installs"
+  url: https://www.skills.sh/
+  checked: 2026-11-05
+purpose: Reproduce a failure, test hypotheses and keep a tight feedback loop.
+access: local
 kind: skill
 pack: core
 summary: feedback-loop debugging

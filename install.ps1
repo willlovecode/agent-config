@@ -1,4 +1,10 @@
-# Applies this repo's agent config to Codex and Claude Code for one profile.
+# Fallback installer for machines without agtk. It applies this repo's agent config to
+# Codex and Claude Code for one profile. When ~\.agtk\bin\agtk.exe is installed and the
+# profile has a profile.yaml, it hands over to `agtk apply` instead (same files, plus the
+# Models step: model routing, per-tool instruction files, Google plans). Without agtk it
+# runs the legacy path below, which reads profile.json and does not support the Models step:
+# it writes the same standalone text to ~/.codex/AGENTS.md and ~/.claude/CLAUDE.md (neither
+# imports the other), but without agtk's generated-file comment and without the routing table.
 # Only adds and updates: it never deletes skills, agents, hooks or plugins. Safe to re-run.
 #   install.ps1                  profile from the last run, else home
 #   install.ps1 -Profile work    work machine (see docs/portable-toolkit-design.md)
@@ -11,23 +17,45 @@ $codex  = Join-Path $u ".codex"
 $claude = Join-Path $u ".claude"
 $state  = Join-Path $u ".agent-config"
 $utf8   = New-Object System.Text.UTF8Encoding $false
-New-Item -ItemType Directory -Force $codex, $claude, $state | Out-Null
 
 $profileFile = Join-Path $state "profile"
 if (-not $Profile) {
-  $Profile = if (Test-Path $profileFile) { (Get-Content $profileFile -Raw).Trim() }
+  $Profile = if (Test-Path $profileFile) { (Get-Content $profileFile -Raw -Encoding UTF8).Trim() }
              elseif (Test-Path (Join-Path $repo "profiles\home")) { "home" } else { "work" }   # the work kit has no home profile
 }
 $pdir = Join-Path $repo "profiles\$Profile"
-$prof = Get-Content (Join-Path $pdir "profile.json") -Raw | ConvertFrom-Json
+
+# --- Hand over to agtk when it is installed. Nothing is created before this point.
+$agtk = Join-Path $u ".agtk\bin\agtk.exe"
+if ((Test-Path (Join-Path $pdir "profile.yaml")) -and (Test-Path $agtk)) {
+  # agtk embeds the catalog, packs and base text: build it fresh when this checkout can, so
+  # the files it writes match the checkout and not the build that was installed.
+  if ((Get-Command go -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $repo "go.mod"))) {
+    $fresh = Join-Path $env:TEMP "agtk-install\agtk.exe"
+    Push-Location $repo
+    & go build -o $fresh ./cmd/agtk
+    Pop-Location
+    if ($LASTEXITCODE -eq 0) { $agtk = $fresh } else { "go build failed; using the installed agtk" }
+  }
+  $agtkArgs = @("apply", "--profile", $pdir)
+  if ($Tier) { $agtkArgs += @("--tier", $Tier) }
+  "Handing over to agtk: $agtk $($agtkArgs -join ' ')"
+  & $agtk @agtkArgs
+  exit $LASTEXITCODE
+}
+
+# --- Legacy path (no agtk, or a profile without profile.yaml).
+New-Item -ItemType Directory -Force $codex, $claude, $state | Out-Null
+$prof = Get-Content (Join-Path $pdir "profile.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 "Profile: $Profile ($($prof.description))"
+
 
 # --- Tier: can hooks run here? A = yes, B = plain files and permission rules only.
 $why = @()
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { $why += "node is not on PATH" }
 foreach ($m in "$env:ProgramFiles\ClaudeCode\managed-settings.json", "$env:ProgramData\ClaudeCode\managed-settings.json") {
   if (Test-Path $m) {
-    $ms_ = Get-Content $m -Raw | ConvertFrom-Json
+    $ms_ = Get-Content $m -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($ms_.disableAllHooks -or $ms_.allowManagedHooksOnly) { $why += "Claude Code managed settings block user hooks ($m)" }
   }
 }
@@ -55,7 +83,7 @@ function Set-TomlTopKeys($path, $values) {
   [IO.File]::WriteAllText($path, ($lines -join $nl), $utf8)
 }
 
-function Read-Json($path) { if (Test-Path $path) { Get-Content $path -Raw | ConvertFrom-Json } else { [pscustomobject]@{} } }
+function Read-Json($path) { if (Test-Path $path) { Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} } }
 function Write-Json($path, $obj) { [IO.File]::WriteAllText($path, (ConvertTo-Json -InputObject $obj -Depth 20), $utf8) }
 function Set-Prop($obj, $name, $value) { $obj | Add-Member -Force -NotePropertyName $name -NotePropertyValue $value }
 
@@ -67,17 +95,16 @@ function Set-HookGroup($settings, $event, $group, $marker) {
 }
 
 "Instructions"
-$agentsText = (Get-Content (Join-Path $repo "base\AGENTS.md") -Raw).TrimEnd() + "`n`n" + (Get-Content (Join-Path $pdir "AGENTS.md") -Raw).TrimEnd() + "`n"
+$agentsText = (Get-Content (Join-Path $repo "base\AGENTS.md") -Raw -Encoding UTF8).TrimEnd() + "`n`n" + (Get-Content (Join-Path $pdir "AGENTS.md") -Raw -Encoding UTF8).TrimEnd() + "`n"
 [IO.File]::WriteAllText((Join-Path $codex "AGENTS.md"), $agentsText, $utf8)
 "  ~/.codex/AGENTS.md = base + profiles/$Profile ($([math]::Round($agentsText.Length / 4)) tokens approx.)"
-$importPath = ($codex -replace '\\', '/') + "/AGENTS.md"
-[IO.File]::WriteAllText((Join-Path $claude "CLAUDE.md"), "@$importPath`n", $utf8)
-"  ~/.claude/CLAUDE.md imports $importPath"
+[IO.File]::WriteAllText((Join-Path $claude "CLAUDE.md"), $agentsText, $utf8)
+"  ~/.claude/CLAUDE.md = the same text, standalone (no import, no routing table)"
 
 "Codex"
 if ($prof.codexDefaults) {
   $want = [ordered]@{}
-  foreach ($l in Get-Content (Join-Path $pdir $prof.codexDefaults)) {
+  foreach ($l in Get-Content (Join-Path $pdir $prof.codexDefaults) -Encoding UTF8) {
     if ($l -match '^\s*(model|model_reasoning_effort)\s*=\s*(.+?)\s*$') { $want[$matches[1]] = $matches[2] }
   }
   Set-TomlTopKeys (Join-Path $codex "config.toml") $want
@@ -99,7 +126,7 @@ $sp = Join-Path $claude "settings.json"
 $s  = Read-Json $sp
 if ($prof.claudeModelSettings) {
   # modelSettings is merged per model id; entries not in the repo are kept.
-  $ms = Get-Content (Join-Path $pdir $prof.claudeModelSettings) -Raw | ConvertFrom-Json
+  $ms = Get-Content (Join-Path $pdir $prof.claudeModelSettings) -Raw -Encoding UTF8 | ConvertFrom-Json
   if (-not $s.modelSettings) { Set-Prop $s "modelSettings" ([pscustomobject]@{}) }
   foreach ($p in $ms.PSObject.Properties) { Set-Prop $s.modelSettings $p.Name $p.Value }
   "  modelSettings: $(($ms.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value.effortLevel)" }) -join ', ')"

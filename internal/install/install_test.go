@@ -3,14 +3,81 @@ package install
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/willlovecode/agent-config/internal/catalog"
 	"github.com/willlovecode/agent-config/internal/profile"
 )
+
+func TestPlanUsesToolPresenceWithoutProbing(t *testing.T) {
+	o, _ := setup(t, "A", "claude_code")
+	o.Profile = &profile.Profile{Answers: profile.Answers{Tools: []string{"claude_code"}}, Items: []string{"context7"}}
+	o.SkipTools = false
+
+	bin := t.TempDir()
+	marker := filepath.Join(bin, "invoked")
+	t.Setenv("PATH", bin)
+	t.Setenv("AGTK_TEST_MARKER", marker)
+	name, script := "claude", "#!/bin/sh\nprintf 'called' > \"$AGTK_TEST_MARKER\"\n"
+	if runtime.GOOS == "windows" {
+		name, script = "claude.cmd", "@echo off\r\necho called > \"%AGTK_TEST_MARKER%\"\r\n"
+	}
+	if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	changes, err := Plan(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes) != 1 || changes[0].Action != "run" || !strings.HasPrefix(changes[0].What, "claude mcp add") {
+		t.Fatalf("expected a possible MCP command, got %+v", changes)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("plan ran a tool command, marker stat: %v", err)
+	}
+}
+
+func TestSavedProfileIsPlannedAndBackedUp(t *testing.T) {
+	o, _ := setup(t, "A", "codex")
+	o.Profile.Items = []string{"instructions-base"}
+	o.Profile.ProjectItems = nil
+	path := filepath.Join(t.TempDir(), "profile.yaml")
+	const original = "description: previous profile\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	o.Profile = o.Profile.At(path)
+	o.SaveProfile = true
+	plan, err := Plan(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, c := range plan {
+		found = found || (c.Action == "change" && c.What == path)
+	}
+	if !found || read(t, path) != original {
+		t.Fatal("plan must preview the profile update without writing it")
+	}
+	if err := Apply(o); err != nil {
+		t.Fatal(err)
+	}
+	if read(t, path) == original {
+		t.Fatal("apply should write the profile")
+	}
+	if err := Undo(StateDir(o.Home), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if read(t, path) != original {
+		t.Fatal("undo should restore the previous profile")
+	}
+}
 
 const userSettings = `{
   "zeta": "kept — with non-ASCII",
@@ -60,7 +127,11 @@ codex_profiles: [codex/deep.config.toml]
 	if err != nil {
 		t.Fatal(err)
 	}
-	exe := filepath.Join(t.TempDir(), "agtk.exe")
+	name := "agtk"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	exe := filepath.Join(t.TempDir(), name)
 	os.WriteFile(exe, []byte("binary"), 0o755)
 	return Options{Home: home, Assets: assets, Catalog: cat, Profile: p, Tier: tier, Exe: exe,
 		SkipTools: true, Version: "test", Out: &bytes.Buffer{}}, project
@@ -77,6 +148,7 @@ func read(t *testing.T, p string) string {
 
 func TestApplyMigrateRerunUndo(t *testing.T) {
 	o, project := setup(t, "A", "claude_code, codex")
+	binary := filepath.Join(".agtk", "bin", filepath.Base(o.Exe))
 	sp := filepath.Join(o.Home, ".claude", "settings.json")
 	os.MkdirAll(filepath.Dir(sp), 0o755)
 	os.WriteFile(sp, []byte(userSettings), 0o644)
@@ -104,7 +176,7 @@ func TestApplyMigrateRerunUndo(t *testing.T) {
 	}
 	for _, p := range []string{
 		".codex/AGENTS.md", ".claude/CLAUDE.md", ".codex/rules/agent-config.rules", ".codex/deep.config.toml",
-		".claude/agents/scout.md", ".agents/skills/tdd/SKILL.md", ".claude/skills/tdd/SKILL.md", ".agtk/bin/agtk.exe",
+		".claude/agents/scout.md", ".agents/skills/tdd/SKILL.md", ".claude/skills/tdd/SKILL.md", binary,
 	} {
 		if _, err := os.Stat(filepath.Join(o.Home, p)); err != nil {
 			t.Errorf("missing %s", p)
@@ -123,7 +195,7 @@ func TestApplyMigrateRerunUndo(t *testing.T) {
 		Hooks map[string][]struct{ Hooks []struct{ Command string } }
 	}
 	json.Unmarshal([]byte(read(t, filepath.Join(o.Home, ".codex/hooks.json"))), &hooks)
-	if cmd := hooks.Hooks["PreToolUse"][0].Hooks[0].Command; !strings.HasSuffix(cmd, `agtk.exe" hook git-guard`) {
+	if cmd := hooks.Hooks["PreToolUse"][0].Hooks[0].Command; !strings.HasSuffix(cmd, filepath.Base(o.Exe)+`" hook git-guard`) {
 		t.Errorf("codex hook command %q", cmd)
 	}
 	var claudeHooks struct {
@@ -160,7 +232,7 @@ func TestApplyMigrateRerunUndo(t *testing.T) {
 	if got := read(t, toml); got != origTOML {
 		t.Errorf("config.toml not restored:\n%s", got)
 	}
-	for _, p := range []string{".codex/AGENTS.md", ".agents/skills/tdd", ".claude/skills/tdd", ".agtk/bin/agtk.exe"} {
+	for _, p := range []string{".codex/AGENTS.md", ".claude/CLAUDE.md", ".agents/skills/tdd", ".claude/skills/tdd", binary} {
 		if exists(filepath.Join(o.Home, p)) {
 			t.Errorf("%s should be gone after undo", p)
 		}
@@ -179,7 +251,7 @@ func TestTierBAndToolChoice(t *testing.T) {
 	if strings.Contains(s, `"hooks"`) || !strings.Contains(s, "Bash(git push:*)") {
 		t.Errorf("tier B must use deny rules, not hooks:\n%s", s)
 	}
-	for _, p := range []string{".codex/hooks.json", ".codex/rules", ".codex/config.toml", ".agents/skills"} {
+	for _, p := range []string{".codex", ".agents/skills"} {
 		if exists(filepath.Join(o.Home, p)) {
 			t.Errorf("%s written although Codex is not used", p)
 		}
@@ -267,7 +339,8 @@ func TestPlanWritesNothing(t *testing.T) {
 		paths = append(paths, c.Action+" "+c.What)
 	}
 	all := strings.Join(paths, "\n")
-	for _, want := range []string{"create " + filepath.Join(o.Home, ".codex", "AGENTS.md"), "settings.json", "skills" + string(filepath.Separator) + "tdd", "agtk.exe"} {
+	binary := filepath.Join(StateDir(o.Home), "bin", filepath.Base(o.Exe))
+	for _, want := range []string{"create " + filepath.Join(o.Home, ".codex", "AGENTS.md"), "settings.json", "skills" + string(filepath.Separator) + "tdd", "create " + binary} {
 		if !strings.Contains(all, want) {
 			t.Errorf("plan misses %q:\n%s", want, all)
 		}

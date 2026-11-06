@@ -1,4 +1,9 @@
 id: context7
+task: Documentation
+purpose: Look up current documentation for a library or framework.
+access: network
+needs: Hosted Context7 MCP and an approved data path.
+website: https://context7.com/
 kind: mcp
 summary: current library docs (MCP)
 tools: [claude_code, codex]
@@ -7,8 +12,8 @@ mcp:
   codex_enabled_tools: [resolve-library-id, query-docs]
 audit: hosted service; queries leave the machine
 recommend_when: stacks
-never_when: use != personal and not allow_external_mcp
+never_when: use != personal
 why:
   recommended: up-to-date docs for the libraries you use; tools load only when used
   not_recommended: no stacks chosen
-  never: corporate, data leaves the company (opt in if allowed)
+  never: documentation requests go to an external service; select only with IT approval

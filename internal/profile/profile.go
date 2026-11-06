@@ -11,16 +11,32 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/willlovecode/agent-config/internal/catalog"
+	"github.com/willlovecode/agent-config/internal/routing"
 )
 
 type Answers struct {
-	Use              string   `yaml:"use"` // personal, corporate_gateway, corporate_key
-	Tools            []string `yaml:"tools"`
-	Stacks           []string `yaml:"stacks,omitempty"`
-	Work             []string `yaml:"work,omitempty"`
-	Autonomy         string   `yaml:"autonomy,omitempty"`
-	Budget           string   `yaml:"budget,omitempty"`
-	AllowExternalMCP bool     `yaml:"allow_external_mcp,omitempty"`
+	Use              string          `yaml:"use"` // personal, company (also accepts the old corporate values)
+	Tools            []string        `yaml:"tools"`
+	Stacks           []string        `yaml:"stacks,omitempty"`
+	Work             []string        `yaml:"work,omitempty"`
+	Autonomy         string          `yaml:"autonomy,omitempty"`
+	Budget           string          `yaml:"budget,omitempty"`
+	AllowExternalMCP bool            `yaml:"allow_external_mcp,omitempty"`
+	Plans            []string        `yaml:"plans,omitempty"`   // selected accounts (legacy: gemini = gemini_pro)
+	Models           []routing.Model `yaml:"models,omitempty"`  // explicitly confirmed client models
+	Routing          string          `yaml:"routing,omitempty"` // saver, balanced, quality; empty or none leaves models alone
+}
+
+func (a Answers) Company() bool {
+	switch a.Use {
+	case "company", "corporate_gateway", "corporate_key":
+		return true
+	}
+	return false
+}
+
+func (a Answers) ResolveRouting() (*routing.Setup, bool, error) {
+	return routing.ResolveSetup(a.Routing, a.Plans, a.Models, a.Tools)
 }
 
 type ProjectItems struct {
@@ -66,7 +82,38 @@ func Load(p string) (*Profile, error) {
 }
 
 // File reads a side file named in the profile.
-func (p *Profile) File(rel string) ([]byte, error) { return os.ReadFile(filepath.Join(p.Dir, rel)) }
+func (p *Profile) File(name string) ([]byte, error) {
+	if !filepath.IsAbs(name) {
+		name = filepath.Join(p.Dir, name)
+	}
+	return os.ReadFile(name)
+}
+
+// At returns a copy saved at path, keeping any side files anchored to their original location.
+func (p Profile) At(path string) *Profile {
+	dir := filepath.Dir(path)
+	if p.Dir != "" && p.Dir != dir {
+		rebase := func(name string) string {
+			if name == "" || filepath.IsAbs(name) {
+				return name
+			}
+			absolute := filepath.Join(p.Dir, name)
+			if relative, err := filepath.Rel(dir, absolute); err == nil {
+				return relative
+			}
+			return absolute
+		}
+		p.Instructions = rebase(p.Instructions)
+		p.ClaudeModelSettings = rebase(p.ClaudeModelSettings)
+		p.CodexDefaults = rebase(p.CodexDefaults)
+		p.CodexProfiles = append([]string(nil), p.CodexProfiles...)
+		for i, name := range p.CodexProfiles {
+			p.CodexProfiles[i] = rebase(name)
+		}
+	}
+	p.Dir, p.Path = dir, path
+	return &p
+}
 
 // Resolve checks that every chosen item exists in the catalog and fits its scope.
 func (p *Profile) Resolve(c *catalog.Catalog) (user []*catalog.Item, err error) {
@@ -104,5 +151,7 @@ func (a Answers) Facts(f catalog.Facts) catalog.Facts {
 	out["autonomy"] = a.Autonomy
 	out["budget"] = a.Budget
 	out["allow_external_mcp"] = a.AllowExternalMCP
+	out["plans"] = a.Plans
+	out["routing"] = a.Routing
 	return out
 }

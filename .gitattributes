@@ -1,0 +1,10 @@
+# Shell scripts must never get CRLF (a CRLF shebang line fails with "bad interpreter" on Linux),
+# and Go and YAML sources are LF everywhere so builds and embedded catalog files are identical.
+*.sh   text eol=lf
+*.go   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+
+# Vendored skill packs keep the bytes they were pinned with: skills/baseline.json and the
+# install pins hash them. A few of their files are CRLF in the index; do not rewrite those.
+packs/** -text

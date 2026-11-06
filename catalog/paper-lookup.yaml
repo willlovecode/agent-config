@@ -1,4 +1,8 @@
 id: paper-lookup
+task: Research
+purpose: Find papers and citations with provenance.
+access: network
+needs: Python and access to external scholarly APIs.
 kind: skill
 pack: research
 summary: 18 scholarly APIs with provenance
@@ -16,4 +20,4 @@ never_when: use != personal
 why:
   recommended: research work chosen
   not_recommended: only useful for literature research
-  never: sends queries to public scholarly APIs; off on corporate machines
+  never: sends queries to public scholarly APIs; select only with IT approval

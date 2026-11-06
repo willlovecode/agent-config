@@ -1,4 +1,7 @@
 id: grill-me
+task: Planning
+purpose: Use the short alias for the design interview.
+access: local
 kind: skill
 pack: core
 summary: /grill-me alias for grilling

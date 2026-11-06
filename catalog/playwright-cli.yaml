@@ -1,0 +1,19 @@
+id: playwright-cli
+kind: skill
+pack: extras
+task: Testing & debugging
+summary: Browser tests, reproduction and traces
+purpose: Reproduce UI failures, inspect test flows and capture browser traces.
+access: network
+needs: Playwright CLI and a browser; optional downloads, remote targets and GitHub uploads.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: microsoft/playwright-cli
+  path: skills/playwright-cli
+  commit: f50f57905b9fd3dd355330719ddf0687000c9437
+  license: Apache-2.0
+vendored: packs/extras/skills/playwright-cli
+website: https://playwright.dev/agent-cli/skills
+why:
+  not_recommended: Optional when browser reproduction or traces would help.

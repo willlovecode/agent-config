@@ -1,0 +1,20 @@
+id: python-testing-patterns
+kind: skill
+pack: extras
+task: Testing & debugging
+summary: pytest fixtures, mocking and test layout
+purpose: Design Python test suites and pick suitable fixtures, mocks and parametrization.
+access: command
+needs: pytest in the project environment; optional coverage tool.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: wshobson/agents
+  path: plugins/python-development/skills/python-testing-patterns
+  commit: 4bde3168b43c0655c4d00ea2726e631719908a6d
+  license: MIT
+vendored: packs/extras/skills/python-testing-patterns
+recommend_when: stacks contains python and work contains testing
+why:
+  recommended: Python and testing chosen; use it to organize fixtures and test suites.
+  not_recommended: Most useful for Python test work.

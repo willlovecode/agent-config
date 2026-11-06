@@ -1,0 +1,20 @@
+id: writing-guidelines
+kind: skill
+pack: extras
+task: Documentation
+summary: Documentation style and clarity review
+purpose: Review technical prose, voice and style before publishing.
+access: network
+needs: Fetches Vercel's current writing guidelines from GitHub.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: vercel-labs/agent-skills
+  path: skills/writing-guidelines
+  commit: 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62
+  license: MIT
+vendored: packs/extras/skills/writing-guidelines
+website: https://github.com/vercel-labs/agent-skills
+why:
+  recommended: Matches your selected Documentation work or stack.
+  not_recommended: Review technical prose, voice and style before publishing.

@@ -3,6 +3,7 @@ package catalog
 import (
 	"os"
 	"testing"
+	"testing/fstest"
 )
 
 func TestRules(t *testing.T) {
@@ -71,7 +72,34 @@ func TestCatalogLoadsAndRecommends(t *testing.T) {
 		t.Error("Claude-only items must be left out for a Codex-only user")
 	}
 	optIn := decide(Facts{"use": "corporate_key", "tools": []string{"codex"}, "stacks": []string{"go"}, "allow_external_mcp": true})
-	if !optIn["context7"].Recommended {
-		t.Error("context7 must be on when the user allows external MCP")
+	if optIn["context7"].Recommended {
+		t.Error("a legacy user preference cannot approve external MCP in Company mode")
+	}
+}
+
+func TestAuthoredSkillsAndGeminiTool(t *testing.T) {
+	const skill = "---\nname: mine\ndescription: x\n---\n"
+	load := func(yaml string) error {
+		_, err := Load(fstest.MapFS{
+			"catalog/mine.yaml":               {Data: []byte(yaml)},
+			"packs/core/skills/mine/SKILL.md": {Data: []byte(skill)},
+		})
+		return err
+	}
+	head := "id: mine\nkind: skill\nsummary: s\nvendored: packs/core/skills/mine\n"
+	sha := "0123456789abcdef0123456789abcdef01234567"
+	for _, c := range []struct {
+		name, yaml string
+		ok         bool
+	}{
+		{"authored without source", head + "tools: [claude_code, gemini]\nauthored: true\n", true},
+		{"vendored with source", head + "tools: [codex]\nsource: {repo: a/b, commit: " + sha + "}\n", true},
+		{"neither", head + "tools: [codex]\n", false},
+		{"authored with source", head + "tools: [codex]\nauthored: true\nsource: {repo: a/b, commit: " + sha + "}\n", false},
+		{"unknown tool", head + "tools: [vim]\nauthored: true\n", false},
+	} {
+		if err := load(c.yaml); (err == nil) != c.ok {
+			t.Errorf("%s: err = %v, want ok = %v", c.name, err, c.ok)
+		}
 	}
 }

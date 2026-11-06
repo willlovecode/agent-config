@@ -1,0 +1,13 @@
+id: handoff
+task: Planning
+purpose: Write a handoff file so another agent can continue after a usage limit.
+access: local
+kind: skill
+pack: core
+summary: handoff file for switching agents
+tools: [claude_code, codex]
+authored: true
+vendored: packs/core/skills/handoff
+recommend_when: always
+why:
+  recommended: carries the work to the next agent when you switch tools at a usage limit

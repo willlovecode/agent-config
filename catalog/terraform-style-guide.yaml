@@ -1,0 +1,21 @@
+id: terraform-style-guide
+kind: skill
+pack: extras
+task: Infrastructure
+summary: Terraform HCL style and review
+purpose: Review modules and HCL for consistent naming, structure and resource configuration.
+access: local
+needs: Terraform code; applying infrastructure is a separate action.
+tools: [claude_code, codex]
+explicit_only: true
+source:
+  repo: hashicorp/agent-skills
+  path: plugins/terraform/skills/terraform-style-guide
+  commit: 5e30fa5c867ba6777c37e4206babfd08049c396f
+  license: MPL-2.0
+vendored: packs/extras/skills/terraform-style-guide
+website: https://www.hashicorp.com/en/blog/introducing-hashicorp-agent-skills
+recommend_when: stacks contains terraform
+why:
+  recommended: Matches your selected Infrastructure work or stack.
+  not_recommended: Review modules and HCL for consistent naming, structure and resource configuration.

@@ -1,4 +1,7 @@
 id: spring-boot-skill
+task: Backend
+purpose: Implement and test Spring Boot features with per-project guidance.
+access: local
 kind: skill
 pack: java
 scope: project
