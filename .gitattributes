@@ -1,10 +1,17 @@
 # Shell scripts must never get CRLF (a CRLF shebang line fails with "bad interpreter" on Linux),
-# and Go and YAML sources are LF everywhere so builds and embedded catalog files are identical.
+# and sources, instruction text and JSON are LF everywhere so builds, embedded files and the
+# instruction files agtk generates are identical on every checkout (Windows CI checks out with
+# autocrlf, which turned base/AGENTS.md into CRLF and broke the GEMINI.md line-ending test).
 *.sh   text eol=lf
 *.go   text eol=lf
 *.yaml text eol=lf
 *.yml  text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.mjs  text eol=lf
 
 # Vendored skill packs keep the bytes they were pinned with: skills/baseline.json and the
 # install pins hash them. A few of their files are CRLF in the index; do not rewrite those.
+# This rule comes last so it wins over the patterns above.
 packs/** -text
