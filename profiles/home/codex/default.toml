@@ -1,6 +1,6 @@
 # Lines install.ps1 patches into ~/.codex/config.toml. Only these two keys are
 # touched; the rest of that file is managed by the Codex app.
-# Reading of 2026-10-28 (FrontierCode 1.1): medium 50.2% at $0.36 a task, against
-# xhigh 49.3% at $0.56.
+# Reading of 2026-11-07 (FrontierCode 1.1): medium 50.2% at $0.36 a task, the best
+# score for the price; higher efforts are beaten on score and cost.
 model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"

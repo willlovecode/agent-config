@@ -1,5 +1,5 @@
 {
   "model": "claude-haiku-5-5",
   "effort": "medium",
-  "reason": "FrontierCode 1.1 reading of 2026-11-04: Haiku 5.5 medium 41.6% at $0.13 a task is the cheapest non-dominated Claude setting; read-and-compare needs no more (low drops to 34.8%, high adds 0.3 points for twice the cost)."
+  "reason": "FrontierCode 1.1 reading of 2026-11-07: Haiku 5.5 medium 41.6% at $0.13 a task is the cheapest non-dominated Claude setting; read-and-compare needs no more."
 }

@@ -1,5 +1,5 @@
 # Profile for small, mechanical or search tasks: `codex --profile quick`.
-# Reading of 2026-10-18 (FrontierCode 1.1): 45.5% at $0.25 a task, against 50.2% at $0.36 for the
+# Reading of 2026-11-07 (FrontierCode 1.1): 45.5% at $0.25 a task, against 50.2% at $0.36 for the
 # default (medium).
 model = "gpt-6.1-sol"
 model_reasoning_effort = "low"

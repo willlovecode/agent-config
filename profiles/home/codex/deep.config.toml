@@ -1,5 +1,5 @@
 # Profile for the hardest design and debugging work: `codex --profile deep`.
-# Reading of 2026-10-18 (FrontierCode 1.1): 53.3% at $4.59 a task, the best OpenAI score, against
-# 50.6% for xhigh at $3.28 and 50.2% for the default at $0.36.
+# Reading of 2026-11-07 (FrontierCode 1.1): 53.3% at $4.59 a task, the best OpenAI score, against
+# 50.2% for the default at $0.36.
 model = "gpt-6-astra"
 model_reasoning_effort = "max"
