@@ -1,11 +1,11 @@
 package plain
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/willlovecode/agent-config/internal/policy"
 	"github.com/willlovecode/agent-config/internal/scan"
+	"github.com/willlovecode/agent-config/internal/wizard"
 )
 
 func (s *session) system() error {
@@ -56,37 +56,8 @@ func (s *session) checkSystem() error {
 }
 
 func (s *session) systemResults() {
-	r := s.w.Scan
-	s.lines(fmt.Sprintf("System check complete. %s/%s, %d CPU threads, %.0f GB RAM. Tier %s.", r.OS, r.Arch, r.CPUs, r.RAMGB, r.Tier))
-	for _, tool := range []struct{ fact, label string }{
-		{"claude_code", "Claude Code"}, {"codex", "Codex"}, {"gemini", "Gemini CLI"},
-	} {
-		status := "not on PATH"
-		if p := r.Find(tool.fact); p != nil {
-			status = "on PATH"
-			if p.Version != "" {
-				status += " (" + p.Version + ")"
-			}
-		}
-		s.lines("  " + tool.label + " - " + status)
-	}
-	var found []string
-	for _, p := range r.Programs {
-		switch p.Fact {
-		case "claude_code", "codex", "gemini":
-			continue
-		}
-		if p.Version != "" {
-			found = append(found, p.Name+" "+p.Version)
-		} else if p.Available() {
-			found = append(found, p.Name)
-		}
-	}
-	if len(found) > 0 {
-		s.lines("Other tools on PATH: " + strings.Join(found, ", "))
-	}
-	for _, reason := range r.TierWhy {
-		s.lines(reason)
+	for _, line := range wizard.SystemLines(s.w.Scan) {
+		s.lines(line)
 	}
 }
 

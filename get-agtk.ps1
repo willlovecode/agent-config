@@ -98,7 +98,8 @@ function Install-Agtk {
         }
 
         $version = & $target version 2>$null
-        if ($LASTEXITCODE -eq 0 -and $version) { Write-Host "Installed agtk $version to $target" } else { Write-Host "Installed $target, but it did not run here." }
+        $ran = ($LASTEXITCODE -eq 0) -and $version
+        if ($ran) { Write-Host "Installed agtk $version to $target" } else { Write-Host "Installed $target, but it did not run here." }
 
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
         $onPath = ($userPath -split ';') + ($env:Path -split ';') | Where-Object { $_.TrimEnd('\') -ieq $bin }
@@ -112,11 +113,29 @@ function Install-Agtk {
             Write-Host "  [Environment]::SetEnvironmentVariable('Path', '$bin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')"
             Write-Host 'then open a new terminal.'
         }
-        Write-Host ''
-        Write-Host "Next: $cmd wizard"
+        # Offer the wizard when someone is at the console. It is started by full path after the
+        # temp files are gone, so PATH need not be set yet.
+        $answer = $false
+        try {
+            if ($ran -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+                Write-Host ''
+                Write-Host -NoNewline 'Run the setup wizard now? [Y/n] '
+                $key = [Console]::ReadKey($true)
+                Write-Host ($(if ($key.Key -eq 'Enter') { '' } else { $key.KeyChar }))
+                $answer = ($key.Key -eq 'Enter') -or ($key.KeyChar -eq 'y') -or ($key.KeyChar -eq 'Y')
+            }
+        } catch { }
+        if ($answer) {
+            $script:AgtkWizard = $target
+        } else {
+            Write-Host ''
+            Write-Host "Next: $cmd wizard"
+        }
     } finally {
         Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
+$script:AgtkWizard = $null
 Install-Agtk
+if ($script:AgtkWizard) { & $script:AgtkWizard wizard }

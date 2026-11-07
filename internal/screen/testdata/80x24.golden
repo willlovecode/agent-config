@@ -1,0 +1,278 @@
+===== system
+                       agtk setup | step 1 of 6 | System
+
+   This is the agtk setup wizard. It will ask you a few questions and set up
+               Claude Code, Codex and Gemini CLI / Antigravity.
+  Check this machine first? That looks at hardware, tools on PATH and managed
+                   hook settings. Nothing is stored or sent.
+
+  (y)  Yes, check this machine.
+  (n)  No, I will choose by hand.
+  (q)  Quit and do nothing.
+
+Choice [ynq] (Enter = y): 
+===== system-result
+                       agtk setup | step 1 of 6 | System
+
+                                 System check
+   System check complete. windows/amd64, 12 CPU threads, 16 GB RAM. Tier A.
+
+    Claude Code - on PATH (2.1.318)
+    Codex - on PATH (0.166.0)
+    Gemini CLI - not on PATH
+
+  (y)  Continue.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [ybrq] (Enter = y): 
+===== profile-use
+                      agtk setup | step 2 of 6 | Profile
+
+                            Who is this setup for?
+         Your profile sets which components and models are available.
+
+  (1)  Personal.  (default)
+       Configure your own tools and accounts.
+  (2)  Company.
+       Apply company restrictions to items and AI access.
+
+  (?)  Describe a choice.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [12?brq] (Enter = 1): 
+===== work
+               agtk setup | step 2 of 6 | Profile | page 1 of 2
+
+                              What kind of work?
+          These choices help agtk recommend components for your work.
+
+  Build and maintain
+  (1)  [x] Features - Build features, services and APIs.
+  (2)  [ ] Migration - Modernize, upgrade or replace existing code.
+  Quality
+  (3)  [ ] Testing - Write tests, improve coverage and catch regressions.
+  (4)  [ ] Debugging - Reproduce failures and investigate performance.
+  (5)  [ ] Code review - Review diffs for correctness, risks and missing tests.
+  (6)  [ ] Security - Audit dependencies, permissions and sensitive data flows.
+  Design and writing
+  (7)  [ ] UI design - Build and review interfaces and interactions.
+  (8)  [ ] Accessibility - Check semantics, contrast and keyboard access.
+  (9)  [ ] Documentation - Write or revise technical guides and references.
+
+  (y)  Continue.   (?)  Describe a choice.   (n)  Next page.   (b)  Back.
+  (r)  Restart from the beginning.   (q)  Quit and do nothing.
+Choice [1-9y?nbrq] (Enter = y): 
+===== languages
+               agtk setup | step 2 of 6 | Profile | page 1 of 2
+
+                         Which languages and runtimes?
+          These choices help agtk recommend components for your work.
+
+  Application
+  (1)  [ ] C# / .NET - .NET applications, APIs and tests.
+  (2)  [ ] Java - JVM applications and services, including Spring.
+  (3)  [ ] Kotlin - JVM applications, Android and multiplatform projects.
+  (4)  [ ] Python - Services, scripts, testing and data workflows.
+  Web
+  (5)  [ ] JavaScript / TypeScript - Browser applications, Node.js services...
+  (6)  [ ] PHP - Server-side sites, services and applications.
+  (7)  [ ] Ruby - Rails applications, scripts and tooling.
+  Systems
+  (8)  [ ] C / C++ - Native libraries, systems and embedded software.
+  (9)  [ ] Go - Network services, command-line tools and infrastructure.
+
+  (y)  Continue.   (?)  Describe a choice.   (n)  Next page.   (b)  Back.
+  (r)  Restart from the beginning.   (q)  Quit and do nothing.
+Choice [1-9y?nbrq] (Enter = y): 
+===== languages-page-2
+               agtk setup | step 2 of 6 | Profile | page 2 of 2
+
+                         Which languages and runtimes?
+          These choices help agtk recommend components for your work.
+
+  Systems
+  (1)  [ ] Rust - Native tools, services and systems programming.
+  Data
+  (2)  [ ] R - Statistical analysis, visualization and reporting.
+  (3)  [ ] SQL - Queries, schemas, reporting and data migrations.
+  Shell
+  (4)  [ ] Bash - Shell automation on Linux, macOS and WSL.
+  (5)  [ ] PowerShell - Windows administration and cross-platform scripting.
+  Mobile
+  (6)  [ ] Dart - Flutter applications and Dart packages.
+  (7)  [ ] Swift - Apple platform apps and Swift packages.
+
+  (y)  Continue.   (?)  Describe a choice.   (p)  Previous page.   (b)  Back.
+  (r)  Restart from the beginning.   (q)  Quit and do nothing.
+Choice [1-7y?pbrq] (Enter = y): 
+===== tools
+                       agtk setup | step 3 of 6 | Models
+
+                     Which agent tools will you configure?
+        Detected clients start checked. Select others to install later.
+
+  (1)  [x] Claude Code  (found: 2.1.318) - Prepare Claude Code's instruction...
+  (2)  [x] Codex  (found: 0.166.0) - Prepare Codex's instructions, skills an...
+  (3)  [ ] Gemini CLI / Antigravity  (install later) - Write ~/.gemini/GEMIN...
+
+  (y)  Continue.
+  (?)  Describe a choice.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [1-3y?brq] (Enter = y): 
+===== tools-blocked
+                       agtk setup | step 3 of 6 | Models
+
+                     Which agent tools will you configure?
+        Detected clients start checked. Select others to install later.
+
+  (1)  [ ] Claude Code  (found: 2.1.318) - Prepare Claude Code's instruction...
+  (2)  [ ] Codex  (found: 0.166.0) - Prepare Codex's instructions, skills an...
+  (3)  [ ] Gemini CLI / Antigravity  (install later) - Write ~/.gemini/GEMIN...
+
+  (y)  Continue.
+  (?)  Describe a choice.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+  Select at least one agent tool to continue.
+Choice [1-3y?brq] (Enter = y): 
+===== plans
+                agtk setup | step 3 of 6 | Models | page 1 of 4
+
+                    Which AI plans or accounts do you have?
+        Select accounts, or continue with none to keep current models.
+
+  Anthropic
+  (1)  [ ] Claude Pro - Personal subscription
+  (2)  [ ] Claude Max - Personal subscription with higher limits
+  (3)  [ ] Claude Ultra - Personal subscription
+  (4)  [ ] Claude Team - Company seat with organization controls
+  (5)  [ ] Claude Enterprise - Company seat with organization controls
+  (6)  [ ] Claude API / cloud provider - Console, Bedrock, Vertex or Foundry...
+  OpenAI
+  (7)  [ ] ChatGPT Free - Luna in the desktop app, when available
+  (8)  [ ] ChatGPT Go - Luna in the desktop app, when available
+  (9)  [ ] ChatGPT Plus - Personal subscription with CLI and IDE access
+
+  (y)  Continue.   (?)  Describe a choice.   (n)  Next page.   (b)  Back.
+  (r)  Restart from the beginning.   (q)  Quit and do nothing.
+Choice [1-9y?nbrq] (Enter = y): 
+===== plans-details
+                       agtk setup | step 3 of 6 | Models
+
+                                  Claude Pro
+
+  Personal subscription
+  Plan snapshot 2026-11-05
+  Included usage is shared across Claude surfaces. Check Claude's usage
+    screen for your limit.
+  https://support.claude.com/en/articles/14552983-models-usage-and-limits-i
+    n-claude-code
+
+  (b)  Back to the list.
+  (q)  Quit and do nothing.
+
+Choice [bq] (Enter = b): 
+===== models
+                       agtk setup | step 3 of 6 | Models
+
+                  Which models can you use on those accounts?
+    Confirm available models, or continue with none to keep your settings.
+
+  Claude Max
+  (1)  [ ] Claude Haiku 5.5 - Claude Max | Effort: medium
+  (2)  [ ] Claude Sonnet 5.5 - Claude Max | Effort: high
+  (3)  [ ] Claude Opus 5.5 - Claude Max | Effort: medium
+
+  (y)  Continue.
+  (?)  Describe a choice.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [1-3y?brq] (Enter = y): 
+===== routing
+                agtk setup | step 3 of 6 | Models | page 2 of 2
+
+                          How should tasks be routed?
+            Preview each preset's routes, costs, limits and speeds.
+
+  (1)  Balanced.  (default, recommended)
+       Use general models for everyday coding and deeper reasoning for hard
+         work and review.
+       Find code: Claude Haiku 5.5 medium; Coding: Claude Sonnet 5.5 high;
+         Hard tasks: Claude Opus 5.5 medium; Review: Claude Opus 5.5 medium;
+         Mechanical: Claude Haiku 5.5 medium; Research: Claude Sonnet 5.5
+         high
+  (2)  Quality.
+       Prefer the strongest confirmed reasoning models for coding and review.
+         Keep simple edits fast.
+       Find code: Claude Haiku 5.5 medium; Coding: Claude Opus 5.5 medium;
+         Hard tasks: Claude Opus 5.5 medium; Review: Claude Opus 5.5 medium;
+         Mechanical: Claude Haiku 5.5 medium; Research: Claude Sonnet 5.5
+         high
+
+  (?)  Describe a choice.   (p)  Previous page.   (b)  Back.
+  (r)  Restart from the beginning.   (q)  Quit and do nothing.
+Choice [12?pbrq] (Enter = 1): 
+===== save
+                       agtk setup | step 5 of 6 | Review
+
+                Save your choices as a profile for agtk apply?
+      A saved profile lets you repeat this setup later with `agtk apply`.
+
+  (y)  Yes, save the profile.
+  (n)  No, only apply it now.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [ynbrq] (Enter = y): 
+===== confirm
+                       agtk setup | step 5 of 6 | Review
+
+                                Ready to apply?
+  This is exactly what will be written. Close the clients you are configuring
+                    first. Each changed file is backed up.
+
+  Files (1 new, 0 to edit)
+    create ~/.codex/AGENTS.md
+  Commands (0 may run)
+  Save profile for agtk apply: Yes
+
+  (y)  Yes, apply.
+  (b)  Back.
+  (r)  Restart from the beginning.
+  (q)  Quit and do nothing.
+
+Choice [ybrq]: 
+===== done
+                       agtk setup | step 6 of 6 | Apply
+
+                                Setup complete
+
+  Next steps
+  1. Start new sessions in the clients you configured.
+
+===== left
+Left setup. Nothing was written.
+
+===== too-small
+           This terminal is too small
+   agtk needs a window of at least 60x16, and
+               this one is 50x12.
+  Make it bigger and press any key, or use the
+          plain wizard, which scrolls.
+
+  (w)  Use the plain wizard.
+  (q)  Quit and do nothing.
+
+Choice [wq]: 

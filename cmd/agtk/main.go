@@ -24,7 +24,8 @@ var version = "0.1.0-dev" // set by the release build
 
 const usage = `agtk %s: sets up Claude Code, Codex and Gemini CLI / Antigravity.
 
-  agtk [wizard] [--plain]          scrolling terminal wizard (--plain for line input)
+  agtk [wizard] [--plain]          full-screen setup wizard, one keypress per answer
+                                   (--plain, a pipe or a dumb terminal: scrolling prompts)
   agtk wizard --project DIR        include project-scoped skills in the wizard
   agtk --answers file [--save]     install from an answers file without questions (CI)
   agtk apply [--profile dir|file] [--tier A|B] [--skip-tools]

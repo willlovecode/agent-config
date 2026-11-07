@@ -18,7 +18,10 @@ curl -fsSL https://raw.githubusercontent.com/willlovecode/agent-config/master/ge
 
 `get-agtk.sh` picks the archive for your OS and CPU, checks it against `SHA256SUMS`, installs it
 and prints the one line that puts `~/.agtk/bin` on your PATH for your shell (bash, zsh or fish).
-It never edits your shell files. `AGTK_VERSION=1.2.3` picks a release other than the latest.
+It never edits your shell files. At a terminal it then asks one question, "Run the setup wizard
+now? [Y/n]", answered with a single key (it reads `/dev/tty`, so it works under `curl | sh`);
+yes starts `~/.agtk/bin/agtk wizard` by full path, so PATH does not have to be set yet. Without
+a terminal it only prints the next step. `AGTK_VERSION=1.2.3` picks a release other than the latest.
 
 By hand: download `agtk_<version>_<os>_<arch>.tar.gz` and `SHA256SUMS` from the
 [releases page](https://github.com/willlovecode/agent-config/releases), then
@@ -34,12 +37,13 @@ mkdir -p ~/.agtk/bin && tar -xzf agtk_*_linux_amd64.tar.gz -C ~/.agtk/bin agtk
 irm https://raw.githubusercontent.com/willlovecode/agent-config/master/get-agtk.ps1 | iex
 ```
 
-`get-agtk.ps1` (Windows PowerShell 5.1 or 7) does the same for x64 and arm64 and prints the
-command that adds `%USERPROFILE%\.agtk\bin` to your user PATH; it does not run it. By hand, unzip
+`get-agtk.ps1` (Windows PowerShell 5.1 or 7) does the same for x64 and arm64: it prints the
+command that adds `%USERPROFILE%\.agtk\bin` to your user PATH without running it, and at a console
+asks "Run the setup wizard now? [Y/n]" (one key), then starts the installed `agtk.exe wizard`. By hand, unzip
 `agtk_<version>_windows_<arch>.zip` from the releases page to that folder after checking its SHA-256
 (`Get-FileHash`) against `SHA256SUMS`.
 
-**Next**: open a new terminal and run `agtk wizard`. Until PATH is set, use the full path
+**Next**: if you did not answer yes to the wizard question, open a new terminal and run `agtk wizard`. Until PATH is set, use the full path
 (`~/.agtk/bin/agtk wizard`). After `agtk apply` or the wizard, agtk repeats the PATH line when
 `~/.agtk/bin` is still missing from PATH.
 
@@ -80,8 +84,8 @@ are embedded; personal profiles are read from disk.
 Install it first (above). `apply --profile profiles/home` and `check` read files from a checkout of this repo, so run them there; the other commands work anywhere.
 
 ```sh
-agtk wizard                          # terminal wizard
-agtk wizard --plain                  # line input for screen readers and scripts
+agtk wizard                          # full-screen wizard, one keypress per answer
+agtk wizard --plain                  # scrolling prompts, Enter after each answer
 agtk --answers answers.yaml --save   # unattended; remember the profile for apply
 agtk apply --profile profiles/home   # later runs: agtk apply
 agtk status                          # what is installed, what is left to do
@@ -91,13 +95,17 @@ agtk project add-checks ~/Code/repo "uv run pytest -q"
 agtk check                           # catalog, baseline, profile, budget checks
 ```
 
-The wizard asks before checking your machine. Each question stays in the
-terminal scrollback. Press a number to choose or toggle an option, Enter to
-accept the current selection, **b** to go back, or **q** to quit. Press **y**
-at the final confirmation to apply. The prompts use ASCII and work with
-`NO_COLOR`. `--ascii` is accepted for compatibility.
+The wizard works like `p10k configure`: one screen at a time, the terminal cleared
+before each page, nothing scrolling back. It asks before checking your machine.
+Choices are listed as `(1)  Personal.` and a single keypress picks one, with no
+Enter needed. On a list, a number toggles an item and redraws the page, **y** or
+Enter continues, **n** and **p** turn pages, **?** describes a choice, **b** goes
+back, **r** restarts and **q** quits and writes nothing. The last screens show
+exactly what will be written; press **y** to apply. It runs the same on Windows,
+Linux and macOS, needs a window of at least 60x16, and honors `NO_COLOR`.
 
-With `--plain` or redirected input or output, press Enter after each answer.
+With `--plain`, a terminal that is too small, `TERM=dumb`, or redirected input or
+output (pipes, CI), the scrolling wizard runs instead: press Enter after each answer.
 For a multiple-choice question, enter one or more numbers separated by spaces
 or commas to toggle them and continue. In the Items list, Enter opens Review.
 Use `--answers` to automate installation from a YAML profile.

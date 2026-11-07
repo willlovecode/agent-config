@@ -102,7 +102,9 @@ cp "$tmp/x/agtk" "$bindir/.agtk.new.$$" || die "cannot write to $bindir"
 chmod 755 "$bindir/.agtk.new.$$"
 mv -f "$bindir/.agtk.new.$$" "$bindir/agtk"
 
+ran=
 if version=$("$bindir/agtk" version 2>/dev/null); then
+  ran=1
   say "Installed agtk $version to $bindir/agtk"
 else
   say "Installed $bindir/agtk, but it did not run here. Is this a noexec mount, or the wrong CPU?"
@@ -130,6 +132,32 @@ case ":${PATH:-}:" in
     say "then open a new terminal."
     ;;
 esac
+
+# Offer the wizard when someone is at the keyboard. This script may be piped from curl, so
+# stdin is the script: the answer is read from the terminal, one key, and the wizard gets
+# the terminal as its input too. It is started by full path, so PATH need not be set yet.
+interactive=
+if [ -n "$ran" ] && [ -t 1 ] && (: </dev/tty) 2>/dev/null && command -v stty >/dev/null 2>&1; then
+  interactive=1
+fi
+
+if [ -n "$interactive" ]; then
+  say ""
+  printf 'Run the setup wizard now? [Y/n] ' >/dev/tty
+  saved=$(stty -g </dev/tty 2>/dev/null) || saved=
+  trap '[ -z "$saved" ] || stty "$saved" </dev/tty; rm -rf "$tmp"; exit 130' HUP INT TERM
+  stty -icanon -echo min 1 time 0 </dev/tty 2>/dev/null || true
+  key=$(dd bs=1 count=1 2>/dev/null </dev/tty) || key=n
+  [ -z "$saved" ] || stty "$saved" </dev/tty
+  trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+  printf '\n' >/dev/tty
+  case $key in
+    '' | y | Y)
+      rm -rf "$tmp" # exec skips the exit trap
+      exec "$bindir/agtk" wizard </dev/tty
+      ;;
+  esac
+fi
 
 say ""
 say "Next: $cmd wizard"

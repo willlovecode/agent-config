@@ -10,6 +10,7 @@
 *.json text eol=lf
 *.toml text eol=lf
 *.mjs  text eol=lf
+*.golden text eol=lf
 
 # Vendored skill packs keep the bytes they were pinned with: skills/baseline.json and the
 # install pins hash them. A few of their files are CRLF in the index; do not rewrite those.

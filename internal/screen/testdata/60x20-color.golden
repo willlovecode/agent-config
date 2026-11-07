@@ -1,0 +1,280 @@
+===== system
+             [2magtk setup | step 1 of 6 | System[0m
+
+[1m   This is the agtk setup wizard. It will ask you a few[0m
+[1m  questions and set up Claude Code, Codex and Gemini CLI[0m
+[1m                      / Antigravity.[0m
+  Check this machine first? That looks at hardware, tools
+  on PATH and managed hook settings. Nothing is stored or
+                           sent.
+
+  [1m(y)[0m  Yes, check this machine.
+  [1m(n)[0m  No, I will choose by hand.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [ynq] (Enter = y): 
+===== system-result
+             [2magtk setup | step 1 of 6 | System[0m
+
+[1m                       System check[0m
+   System check complete. windows/amd64, 12 CPU threads,
+                    16 GB RAM. Tier A.
+
+    Claude Code - on PATH (2.1.318)
+    Codex - on PATH (0.166.0)
+    Gemini CLI - not on PATH
+
+  [1m(y)[0m  Continue.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [ybrq] (Enter = y): 
+===== profile-use
+            [2magtk setup | step 2 of 6 | Profile[0m
+
+[1m                  Who is this setup for?[0m
+     Your profile sets which components and models are
+                        available.
+
+  [1m(1)[0m  Personal.  [2m(default)[0m
+       [2mConfigure your own tools and accounts.[0m
+  [1m(2)[0m  Company.
+       [2mApply company restrictions to items and AI access.[0m
+
+  [1m(?)[0m  Describe a choice.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [12?brq] (Enter = 1): 
+===== work
+     [2magtk setup | step 2 of 6 | Profile | page 1 of 3[0m
+
+[1m                    What kind of work?[0m
+   These choices help agtk recommend components for your
+                           work.
+
+  [1mBuild and maintain[0m
+  [1m(1)[0m  [x] Features[2m - Build features, services and APIs.[0m
+  [1m(2)[0m  [ ] Migration[2m - Modernize, upgrade or replace exi...[0m
+  [1mQuality[0m
+  [1m(3)[0m  [ ] Testing[2m - Write tests, improve coverage and c...[0m
+  [1m(4)[0m  [ ] Debugging[2m - Reproduce failures and investigat...[0m
+  [1m(5)[0m  [ ] Code review[2m - Review diffs for correctness, r...[0m
+  [1m(6)[0m  [ ] Security[2m - Audit dependencies, permissions an...[0m
+
+  [1m(y)[0m  Continue.   [1m(?)[0m  Describe a choice.
+  [1m(n)[0m  Next page.   [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+Choice [1-6y?nbrq] (Enter = y): 
+===== languages
+     [2magtk setup | step 2 of 6 | Profile | page 1 of 3[0m
+
+[1m               Which languages and runtimes?[0m
+   These choices help agtk recommend components for your
+                           work.
+
+  [1mApplication[0m
+  [1m(1)[0m  [ ] C# / .NET[2m - .NET applications, APIs and tests.[0m
+  [1m(2)[0m  [ ] Java[2m - JVM applications and services, includi...[0m
+  [1m(3)[0m  [ ] Kotlin[2m - JVM applications, Android and multip...[0m
+  [1m(4)[0m  [ ] Python[2m - Services, scripts, testing and data...[0m
+  [1mWeb[0m
+  [1m(5)[0m  [ ] JavaScript / TypeScript[2m - Browser application...[0m
+  [1m(6)[0m  [ ] PHP[2m - Server-side sites, services and applica...[0m
+
+  [1m(y)[0m  Continue.   [1m(?)[0m  Describe a choice.
+  [1m(n)[0m  Next page.   [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+Choice [1-6y?nbrq] (Enter = y): 
+===== languages-page-2
+     [2magtk setup | step 2 of 6 | Profile | page 2 of 3[0m
+
+[1m               Which languages and runtimes?[0m
+   These choices help agtk recommend components for your
+                           work.
+
+  [1mWeb[0m
+  [1m(1)[0m  [ ] Ruby[2m - Rails applications, scripts and tooling.[0m
+  [1mSystems[0m
+  [1m(2)[0m  [ ] C / C++[2m - Native libraries, systems and embed...[0m
+  [1m(3)[0m  [ ] Go[2m - Network services, command-line tools and...[0m
+  [1m(4)[0m  [ ] Rust[2m - Native tools, services and systems pro...[0m
+  [1mData[0m
+  [1m(5)[0m  [ ] R[2m - Statistical analysis, visualization and r...[0m
+
+  [1m(y)[0m  Continue.   [1m(?)[0m  Describe a choice.
+  [1m(n)[0m  Next page.   [1m(p)[0m  Previous page.   [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+Choice [1-5y?npbrq] (Enter = y): 
+===== tools
+             [2magtk setup | step 3 of 6 | Models[0m
+
+[1m           Which agent tools will you configure?[0m
+     Detected clients start checked. Select others to
+                      install later.
+
+  [1m(1)[0m  [x] Claude Code  (found: 2.1.318)[2m - Prepare Claud...[0m
+  [1m(2)[0m  [x] Codex  (found: 0.166.0)[2m - Prepare Codex's ins...[0m
+  [1m(3)[0m  [ ] Gemini CLI / Antigravity  (install later)
+
+  [1m(y)[0m  Continue.
+  [1m(?)[0m  Describe a choice.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [1-3y?brq] (Enter = y): 
+===== tools-blocked
+             [2magtk setup | step 3 of 6 | Models[0m
+
+[1m           Which agent tools will you configure?[0m
+     Detected clients start checked. Select others to
+                      install later.
+
+  [1m(1)[0m  [ ] Claude Code  (found: 2.1.318)[2m - Prepare Claud...[0m
+  [1m(2)[0m  [ ] Codex  (found: 0.166.0)[2m - Prepare Codex's ins...[0m
+  [1m(3)[0m  [ ] Gemini CLI / Antigravity  (install later)
+
+  [1m(y)[0m  Continue.
+  [1m(?)[0m  Describe a choice.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+  [1mSelect at least one agent tool to continue.[0m
+Choice [1-3y?brq] (Enter = y): 
+===== plans
+      [2magtk setup | step 3 of 6 | Models | page 1 of 5[0m
+
+[1m          Which AI plans or accounts do you have?[0m
+  Select accounts, or continue with none to keep current
+                          models.
+
+  [1mAnthropic[0m
+  [1m(1)[0m  [ ] Claude Pro[2m - Personal subscription[0m
+  [1m(2)[0m  [ ] Claude Max[2m - Personal subscription with highe...[0m
+  [1m(3)[0m  [ ] Claude Ultra[2m - Personal subscription[0m
+  [1m(4)[0m  [ ] Claude Team[2m - Company seat with organization...[0m
+  [1m(5)[0m  [ ] Claude Enterprise[2m - Company seat with organiz...[0m
+  [1m(6)[0m  [ ] Claude API / cloud provider[2m - Console, Bedroc...[0m
+
+  [1m(y)[0m  Continue.   [1m(?)[0m  Describe a choice.
+  [1m(n)[0m  Next page.   [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+Choice [1-6y?nbrq] (Enter = y): 
+===== plans-details
+             [2magtk setup | step 3 of 6 | Models[0m
+
+[1m                        Claude Pro[0m
+
+  Personal subscription
+  Plan snapshot 2026-11-05
+  Included usage is shared across Claude surfaces.
+    Check Claude's usage screen for your limit.
+  https://support.claude.com/en/articles/14552983-model
+    s-usage-and-limits-in-claude-code
+
+  [1m(b)[0m  Back to the list.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [bq] (Enter = b): 
+===== models
+             [2magtk setup | step 3 of 6 | Models[0m
+
+[1m        Which models can you use on those accounts?[0m
+  Confirm available models, or continue with none to keep
+                      your settings.
+
+  [1mClaude Max[0m
+  [1m(1)[0m  [ ] Claude Haiku 5.5[2m - Claude Max | Effort: medium[0m
+  [1m(2)[0m  [ ] Claude Sonnet 5.5[2m - Claude Max | Effort: high[0m
+  [1m(3)[0m  [ ] Claude Opus 5.5[2m - Claude Max | Effort: medium[0m
+
+  [1m(y)[0m  Continue.
+  [1m(?)[0m  Describe a choice.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [1-3y?brq] (Enter = y): 
+===== routing
+      [2magtk setup | step 3 of 6 | Models | page 3 of 4[0m
+
+[1m                How should tasks be routed?[0m
+  Preview each preset's routes, costs, limits and speeds.
+
+  [1m(1)[0m  Balanced.  [2m(default, recommended)[0m
+       [2mUse general models for everyday coding and deeper[0m
+       [2m  reasoning for hard work and review.[0m
+       [2mFind code: Claude Haiku 5.5 medium; Coding: Claude[0m
+       [2m  Sonnet 5.5 high; Hard tasks: Claude Opus 5.5[0m
+       [2m  medium; Review: Claude Opus 5.5 medium;[0m
+       [2m  Mechanical: Claude Haiku 5.5 medium; Research:[0m
+       [2m  Claude Sonnet 5.5 high[0m
+
+  [1m(?)[0m  Describe a choice.   [1m(n)[0m  Next page.
+  [1m(p)[0m  Previous page.   [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+Choice [1?npbrq] (Enter = 1): 
+===== save
+             [2magtk setup | step 5 of 6 | Review[0m
+
+[1m      Save your choices as a profile for agtk apply?[0m
+   A saved profile lets you repeat this setup later with
+                       `agtk apply`.
+
+  [1m(y)[0m  Yes, save the profile.
+  [1m(n)[0m  No, only apply it now.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [ynbrq] (Enter = y): 
+===== confirm
+             [2magtk setup | step 5 of 6 | Review[0m
+
+[1m                      Ready to apply?[0m
+  This is exactly what will be written. Close the clients
+  you are configuring first. Each changed file is backed
+                            up.
+
+  [1mFiles (1 new, 0 to edit)[0m
+    create ~/.codex/AGENTS.md
+  [1mCommands (0 may run)[0m
+  Save profile for agtk apply: Yes
+
+  [1m(y)[0m  Yes, apply.
+  [1m(b)[0m  Back.
+  [1m(r)[0m  Restart from the beginning.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [ybrq]: 
+===== done
+             [2magtk setup | step 6 of 6 | Apply[0m
+
+[1m                      Setup complete[0m
+
+  [1mNext steps[0m
+  1. Start new sessions in the clients you configured.
+
+===== left
+Left setup. Nothing was written.
+
+===== too-small
+[1m           This terminal is too small[0m
+   agtk needs a window of at least 60x16, and
+               this one is 50x12.
+  Make it bigger and press any key, or use the
+          plain wizard, which scrolls.
+
+  [1m(w)[0m  Use the plain wizard.
+  [1m(q)[0m  Quit and do nothing.
+
+Choice [wq]: 

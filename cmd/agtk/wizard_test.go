@@ -236,3 +236,40 @@ func TestAnswersFileGemini(t *testing.T) {
 		t.Errorf("codex was not chosen: %v", err)
 	}
 }
+
+// Without a terminal on both ends the wizard scrolls: no screen clearing, no raw keys.
+func TestWizardFallsBackToPlainWithoutTerminal(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(root, "home"))
+	in, err := os.CreateTemp(root, "in")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer in.Close()
+	in.WriteString("q\n")
+	in.Seek(0, 0)
+	out, err := os.CreateTemp(root, "out")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	if err := wizardMain([]string{"--skip-tools"}, in, out); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Agent Toolkit Setup", "[1/6] System", "Nothing was written"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("plain output lacks %q:\n%s", want, b)
+		}
+	}
+	if strings.Contains(string(b), "\x1b") {
+		t.Errorf("plain mode wrote escape sequences:\n%q", b)
+	}
+	if _, err := os.Stat(filepath.Join(root, "home")); !os.IsNotExist(err) {
+		t.Errorf("quitting wrote to the home folder: %v", err)
+	}
+}
