@@ -4,7 +4,7 @@ D|rm -rf "${TMPDIR}/x"
 D|export HOME=/tmp/x; rm -rf $HOME
 D|wsl -d Ubuntu -- bash -lc 'export HOME=/tmp/cloudhome; rm -rf $HOME; mkdir -p $HOME'
 D|wsl -d Ubuntu rm -rf $HOME
-D|wsl.exe -d Ubuntu -- rm -rf /home/wsl_willow
+D|wsl.exe -d Ubuntu -- rm -rf /home/alice
 D|ssh host 'rm -rf /home/x'
 D|docker exec box sh -c "rm -rf /"
 D|rm -rf /
@@ -12,9 +12,9 @@ D|rm -rf /*
 D|rm -rf ~
 D|rm -rf ~/
 D|rm -rf ~/*
-D|rm -rf /home/wsl_willow
-D|rm -rf /home/wsl_willow/
-D|rm -rf /mnt/c/Users/walbe
+D|rm -rf /home/alice
+D|rm -rf /home/alice/
+D|rm -rf /mnt/c/Users/alice
 D|rm -rf *
 D|rm -rf ./*
 D|rm -rf .
@@ -24,23 +24,23 @@ D|sudo rm -rf /var
 D|rm -rf $(pwd)
 D|rm -rf `pwd`
 D|rm -rf build $HOME
-D|Remove-Item -Recurse -Force C:\Users\walbe
+D|Remove-Item -Recurse -Force C:\Users\alice
 D|Remove-Item -Recurse -Force C:\
 D|Remove-Item -Recurse -Force 'C:\Program Files'
 D|Remove-Item -Recurse -Force $env:USERPROFILE\x
 D|ri -Recurse $dir
 D|rd /s /q %TEMP%\x
-D|rd /s /q C:\Users\walbe
-D|cmd /c "rd /s /q C:\Users\walbe"
+D|rd /s /q C:\Users\alice
+D|cmd /c "rd /s /q C:\Users\alice"
 D|powershell -Command "Remove-Item -Recurse $HOME"
 A|rm -rf node_modules
 A|rm -rf ./dist
 A|rm -rf build/ target/
 A|rm -rf /tmp/agtk-test
-A|rm -rf /mnt/c/Users/walbe/Code/_scratch/x
-A|rm -rf "C:\Users\walbe\AppData\Local\Temp\claude\scratchpad\x"
+A|rm -rf /mnt/c/Users/alice/Code/_scratch/x
+A|rm -rf "C:\Users\alice\AppData\Local\Temp\claude\scratchpad\x"
 A|rm file.txt
-A|rm -f /home/wsl_willow/x.txt
+A|rm -f /home/alice/x.txt
 A|rm $HOME/x.txt
 A|Remove-Item -Force out.txt
 A|Remove-Item -Recurse -Force .\dist
@@ -48,7 +48,7 @@ A|rd /s /q build
 A|echo rm -rf $HOME
 A|echo "rm -rf /"
 A|ls -la ~
-A|wsl -d Ubuntu -- ls -la /home/wsl_willow
+A|wsl -d Ubuntu -- ls -la /home/alice
 A|wsl -d Ubuntu -- bash -lc 'ls /tmp'
 A|git log --format="%h %s"
 A|git status
