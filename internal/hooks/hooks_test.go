@@ -129,3 +129,34 @@ func TestStopChecksStates(t *testing.T) {
 		}
 	}
 }
+
+// Delete guard cases ("D|command" must deny, "A|command" must allow); Go only, the .mjs fallback has no delete guard.
+func TestDeleteGuardCases(t *testing.T) {
+	f, err := os.Open(filepath.Join("..", "..", "enforcement", "hooks", "test", "delete-guard-cases.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	n := 0
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		want, command, ok := strings.Cut(strings.TrimRight(sc.Text(), "\r"), "|")
+		if !ok {
+			continue
+		}
+		n++
+		in := `{"tool_name":"Bash","tool_input":{"command":` + quote(command) + `}}`
+		var out bytes.Buffer
+		GitGuard(strings.NewReader(in), &out)
+		got := "A"
+		if out.Len() > 0 {
+			got = "D"
+		}
+		if got != want {
+			t.Errorf("want %s, got %s: %s", want, got, command)
+		}
+	}
+	if n < 40 {
+		t.Fatalf("only %d cases read", n)
+	}
+}

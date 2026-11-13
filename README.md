@@ -192,7 +192,7 @@ Models step.
 | `profiles/home/codex/*.toml` | `model`/effort patched into `~/.codex/config.toml`; `deep`, `quick` profiles |
 | `packs/<pack>/agents/` | `~/.claude/agents/` (scout, mechanic, implement, review) |
 | `packs/<pack>/skills/` | vendored skills, listed in `skills/baseline.json` with their pinned source commit; copied to `~/.agents/skills` and junctioned into `~/.claude/skills` |
-| `enforcement/hooks/` | `~/.agent-config/hooks/`; git-guard registered as PreToolUse in both tools |
+| `enforcement/hooks/` | `~/.agent-config/hooks/`; git-guard registered as PreToolUse in both tools. It denies git push, reset --hard, clean and also recursive deletes (`rm -rf`, `Remove-Item -Recurse`, `rd /s`) whose target holds a variable or substitution or is a root, home, drive or system folder; the check also looks inside `wsl`, `ssh` and `docker` commands (Go hook only, the `.mjs` fallback does not have it) |
 | `enforcement/codex-rules/` | `~/.codex/rules/agent-config.rules` (git push, reset --hard forbidden) |
 | `profile.json` `mcp` | Claude Code user-scope MCP server; Codex `[mcp_servers.<name>]` with `enabled_tools` |
 | `profile.json` `npmGlobal`, `claudePlugins` | pinned global npm packages (pyright) and Claude Code plugins (pyright-lsp) |

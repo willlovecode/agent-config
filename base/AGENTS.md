@@ -14,6 +14,10 @@ sections after "Commits and PRs" are specific to this machine. Project specifics
 - Small, clear changes: just do them. For large, risky or hard-to-undo changes,
   outline the plan first and wait for my OK.
 - Ask before pushing, publishing, deleting data or spending money.
+- Recursive deletes: print the resolved path first and delete only a literal path
+  inside the project or scratch folder, never via a variable. A test needing a clean
+  `HOME` uses `mktemp -d` and runs from a file: `wsl`, `ssh` and `docker` expand
+  `$VARS` in an outer shell first.
 - At session start, if `.agent-handoff/latest.md` exists and is newer than the last
   commit, read it first.
 

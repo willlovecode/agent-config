@@ -1,10 +1,10 @@
 id: git-guard
 task: Review & security
-purpose: Block pushes and destructive Git commands from agent shell sessions.
+purpose: Block pushes, destructive Git commands and risky recursive deletes from agent shell sessions.
 access: local
 kind: hook
-summary: blocks push / reset --hard / clean
+summary: blocks push, reset --hard, clean and recursive deletes of variables, roots or home folders
 tools: [claude_code, codex]
 recommend_when: always
 why:
-  recommended: agents never push or throw away work; in tier B it becomes deny rules instead
+  recommended: agents never push or throw away work, and never delete through a variable or a home or root path; in tier B it becomes deny rules instead

@@ -95,15 +95,16 @@ func checkGit(command string, depth int) string {
 	}
 	tokens := tokenize(command)
 	cmdPos := true // is the current token where a command name goes?
+	wrapper := false
 	for i, t := range tokens {
 		if t.sep {
-			cmdPos = true
+			cmdPos, wrapper = true, false
 			continue
 		}
 		if i > 0 && !tokens[i-1].sep {
 			prev := tokens[i-1].text
 			// Re-scan strings handed to another shell: sh -c, bash -lc, powershell -Command, cmd /c, iex.
-			if shellRe.MatchString(prev) && t.quoted {
+			if (shellRe.MatchString(prev) || wrapper) && t.quoted {
 				if hit := checkGit(t.text, depth+1); hit != "" {
 					return hit
 				}
@@ -116,19 +117,34 @@ func checkGit(command string, depth int) string {
 				}
 			}
 		}
-		if !cmdPos {
+		if !cmdPos && !wrapper {
 			continue
 		}
-		if guardPrefix[strings.ToLower(t.text)] || assignRe.MatchString(t.text) || strings.HasPrefix(t.text, "-") {
-			continue
+		if cmdPos {
+			if guardPrefix[strings.ToLower(t.text)] || assignRe.MatchString(t.text) || strings.HasPrefix(t.text, "-") {
+				continue
+			}
+			cmdPos = false
+			if wrapperRe.MatchString(t.text) {
+				// wsl, ssh, docker...: the command comes after options of their own, so
+				// every later word of this segment may be the program that runs.
+				wrapper = true
+				continue
+			}
 		}
-		cmdPos = false
-		if !gitRe.MatchString(t.text) {
+		isDel := delRe.MatchString(t.text)
+		if !isDel && !gitRe.MatchString(t.text) {
 			continue
 		}
 		var args []string
 		for j := i + 1; j < len(tokens) && !tokens[j].sep; j++ {
 			args = append(args, tokens[j].text)
+		}
+		if isDel {
+			if hit := checkDelete(args); hit != "" {
+				return hit
+			}
+			continue
 		}
 		k := 0
 		for k < len(args) && strings.HasPrefix(args[k], "-") {
@@ -150,6 +166,61 @@ func checkGit(command string, depth int) string {
 			return "git reset --hard"
 		case sub == "clean" && !cleanIsDryRun(rest):
 			return "git clean"
+		}
+	}
+	return ""
+}
+
+// Delete guard: recursive deletes are denied when a target is not a plain, literal path inside
+// a project: a variable or substitution (it can expand to something else than intended, or
+// to nothing, and wsl.exe even expands it once more before a script runs), or a place whose
+// loss is not recoverable (a root, a home directory, a drive, a system folder, a bare * or .).
+var (
+	delRe     = regexp.MustCompile(`(?i)(^|[\\/])(rm|rmdir|rd|del|erase|ri|remove-item)(\.exe)?$`)
+	wrapperRe = regexp.MustCompile(`(?i)(^|[\\/])(wsl|ssh|docker|podman|kubectl|nsenter|chroot)(\.exe)?$`)
+	// rm -rf, rm -r, rm --recursive, Remove-Item -Recurse (and any other flag with an r: a false
+	// positive only matters when a target is risky), cmd's rd /s and del /s.
+	recurseRe   = regexp.MustCompile(`^(-[A-Za-z]*[rR][A-Za-z]*|--recursive|/[sS])$`)
+	cmdFlagRe   = regexp.MustCompile(`^/[A-Za-z]$`)
+	percentRe   = regexp.MustCompile(`%[A-Za-z_][A-Za-z0-9_]*%`)
+	protectedRe = regexp.MustCompile(`^(` +
+		`|\.|\.\.|\*|\.\*|~|~[^/]*` + // empty = a filesystem root
+		`|/(home|root|usr|etc|var|bin|sbin|lib|lib64|opt|mnt|boot|srv|dev|proc|sys|users|windows)` +
+		`|/home/[^/]+|/mnt/[a-z]|/mnt/[a-z]/(users(/[^/]+)?|windows|programdata|program files( \(x86\))?)` +
+		`|[a-z]:|[a-z]:/(users(/[^/]+)?|windows|programdata|program files( \(x86\))?)` +
+		`)$`)
+)
+
+// checkDelete returns a description of a forbidden recursive delete, or "".
+func checkDelete(args []string) string {
+	recursive := false
+	var targets []string
+	for _, a := range args {
+		switch {
+		case recurseRe.MatchString(a):
+			recursive = true
+		case strings.HasPrefix(a, "-") || cmdFlagRe.MatchString(a):
+		default:
+			targets = append(targets, a)
+		}
+	}
+	if !recursive {
+		return ""
+	}
+	for _, t := range targets {
+		if strings.ContainsAny(t, "$`") || percentRe.MatchString(t) {
+			return fmt.Sprintf("a recursive delete of %q, whose path contains a variable or substitution", t)
+		}
+		p := strings.ToLower(strings.ReplaceAll(t, `\`, "/"))
+		for {
+			q := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(p, "/"), "/*"), "/.")
+			if q == p {
+				break
+			}
+			p = q
+		}
+		if protectedRe.MatchString(p) {
+			return fmt.Sprintf("a recursive delete of %q, a root, home, drive or system folder", t)
 		}
 	}
 	return ""
@@ -201,6 +272,11 @@ func GitGuard(in io.Reader, out io.Writer) {
 	}
 	for _, c := range candidates {
 		if hit := CheckGit(c); hit != "" {
+			if strings.HasPrefix(hit, "a recursive delete") {
+				deny("Blocked by agtk git-guard: " + hit + ". Print the resolved path first (echo, ls), " +
+					"then delete only that literal path inside the project or scratch folder, or ask the user.")
+				return
+			}
 			deny("Blocked by agtk git-guard: " + hit + " is not allowed for agents. Ask the user to run it themselves.")
 			return
 		}
