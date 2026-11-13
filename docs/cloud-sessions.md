@@ -13,7 +13,8 @@ Paste this into the setup script of the cloud environment (claude.ai/code, envir
 ```bash
 #!/bin/bash
 set -e
-curl -fsSL https://raw.githubusercontent.com/willlovecode/agent-config/master/get-agtk.sh | sh </dev/null
+curl -fsSL https://raw.githubusercontent.com/willlovecode/agent-config/master/get-agtk.sh -o /tmp/get-agtk.sh
+sh /tmp/get-agtk.sh </dev/null
 git clone --depth 1 https://github.com/willlovecode/agent-config.git "$HOME/.agtk/agent-config"
 "$HOME/.agtk/bin/agtk" apply --profile "$HOME/.agtk/agent-config/profiles/cloud" --skip-tools
 ```
