@@ -26,7 +26,7 @@ git clone --depth 1 https://github.com/willlovecode/agent-config.git "$HOME/.agt
 
 2026-11-13 on Ubuntu (WSL) with an empty `HOME` and the v0.1.1 Linux binary: unattended,
 no wizard, writes `CLAUDE.md`, `agents/*`, six skills and a `settings.json` without hooks.
-Not yet tried inside a real cloud container.
+2026-11-13 in a real cloud container (claude.ai/code, Default environment, Limited network with github.com, raw.githubusercontent.com and the release hosts added): the setup script completes.
 
 ## Limits
 
