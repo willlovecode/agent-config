@@ -1,0 +1,23 @@
+# agtk profile for Claude Code cloud sessions (claude.ai/code). Linux container, Claude only,
+# no hooks (pushes must work from the phone), no MCP, no npm or plugins.
+# Applied by the environment setup script: see docs/cloud-sessions.md.
+description: "Claude Code cloud container: same instructions, subagents and skills as home; no hooks, no third-party tools."
+answers:
+  use: personal
+  tools: [claude_code]
+  stacks: [python, java, spring, javascript]
+  work: [greenfield, research, data]
+  autonomy: autonomous
+  budget: normal
+  plans: [claude_pro]
+  routing: balanced
+items:
+  - instructions-base
+  - subagents
+  - tdd
+  - diagnosing-bugs
+  - grilling
+  - grill-me
+  - handoff
+  - paper-lookup
+instructions: AGENTS.md

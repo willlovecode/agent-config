@@ -1,0 +1,4 @@
+{
+  "description": "Claude Code cloud container: same instructions, subagents and skills as home; no hooks, no third-party tools.",
+  "packs": ["core", "research"]
+}
